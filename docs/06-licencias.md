@@ -1,0 +1,25 @@
+# Licenses and provenance
+
+This is an engineering record, not legal advice. I have not chosen a license for the original project and make no new license grant here.
+
+- **VERIFIED FACT — Wine.** [`COPYING.LIB:1–8`](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/COPYING.LIB#L1-L8) contains LGPL 2.1. Confirm each file's version and notices independently. For a modified Wine binary release, preserve applicable notices and provide the corresponding source, including modifications and required build material, in a way that meets the applicable LGPL terms.
+- **VERIFIED FACT — ReactOS.** The [upstream project](https://github.com/reactos/reactos) describes GPL v2; the [upstream coding style](https://reactos.org/wiki/Coding_Style) uses GPL-2.0-or-later in file headers. Much of the code is GPL-2.0-or-later; do not apply that designation to every file unconditionally.
+- **VERIFIED FACT — LiberNT.** The [upstream repo](https://github.com/LiberNT/LiberNT) identifies GPL-3.0 as its general license. [`CREDITS.md:130`](https://github.com/LiberNT/LiberNT/blob/main-nt10/CREDITS.md#L130) lists separate terms for inherited files. Treat GPL-3.0-only changes as incompatible with incorporation into a GPL-2.0-only project module. ReactOS and LiberNT are conceptual references only.
+- **DESIGN POLICY — future Linux module.** License project-owned module code GPL-2.0-only. This is project policy, not a claim that every external Linux module or source file must carry that license. See [Linux `COPYING`:1–12](https://github.com/torvalds/linux/blob/v6.18/COPYING#L1-L12) and the upstream [SPDX and module rules](https://github.com/torvalds/linux/blob/v6.18/Documentation/process/license-rules.rst).
+
+**Clean-room rule.** Never use leaked or decompiled Windows code. Use public specifications and documented behavior, track provenance, and never bundle Microsoft or other proprietary DLLs. Recipes may point to legitimate vendor sources for personal use; each component's terms still apply.
+
+## Original project code — LICENSE NOT SELECTED
+
+**HYPOTHESIS — options for independent CompatibilityOS code.** This comparison does not revise third-party terms or select a license.
+
+| Option | Trade-off |
+| --- | --- |
+| [MIT](https://opensource.org/license/mit) | Permissive; retain notices. No express patent license in the text. |
+| [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Permissive; includes an express patent grant and notice requirements. |
+| [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html) | Strong copyleft for distributed derivative works. GPL-3.0-only material must not be incorporated into the future GPL-2.0-only module. |
+| [LGPL-2.1-or-later](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) | Library copyleft with conditions on distribution and linking; preserves the option to use a later LGPL version. |
+
+**VERIFIED FACT — scope of the Apache-2.0 incompatibility.** The [Apache Software Foundation's compatibility note](https://www.apache.org/licenses/GPL-compatibility.html) distinguishes GPLv2 from GPLv3. In CompatibilityOS, the Apache-2.0/GPL-2.0-only restriction concerns code linked into or otherwise forming a combined work with the future GPL-2.0-only kernel module. It does not prohibit Apache-2.0 for independent userspace code merely interacting with the module or shipped alongside it. Evaluate actual integration boundaries before distribution.
+
+**NOT ANALYZED — file-by-file review.** No patches or binary artifacts exist here. Before accepting third-party material, record each affected path, origin URL and exact revision, license/SPDX and notices, modifications, redistribution obligations, and the admission or rejection rationale. Apply the same review to GE/CachyOS patches, DXVK/VKD3D-Proton binaries, dependencies, recipes, and packaging. Do not merge or ship material with unresolved provenance or terms.
