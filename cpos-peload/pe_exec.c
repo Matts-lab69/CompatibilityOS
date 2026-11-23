@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
 #include <unistd.h>
 
 static uint16_t r16(const uint8_t *p) { return (uint16_t)p[0] | (uint16_t)p[1] << 8; }
@@ -60,6 +61,8 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     return PE_UNSUPPORTED;
 #else
     struct pe_image parsed;
+    int current_personality = personality(0xffffffffUL);
+    if (current_personality < 0 || (current_personality & READ_IMPLIES_EXEC)) return PE_UNSUPPORTED;
     if (!options || (!options->imports && options->import_count) ||
         pe_parse(data, size, &parsed) != PE_OK) return PE_INVALID;
     uint8_t *file_image = NULL;

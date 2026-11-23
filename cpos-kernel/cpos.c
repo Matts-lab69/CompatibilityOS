@@ -15,7 +15,6 @@
 #include <linux/wait.h>
 #include "cpos_abi.h"
 
-static const struct file_operations cpos_fops;
 
 struct cpos_file {
 	struct mutex lock;
@@ -39,7 +38,6 @@ struct cpos_object {
 	bool signaled;
 	bool removed;
 	struct task_struct *owner;
-	struct file *fd_file;
 };
 
 static bool cpos_reserved_zero(const u64 reserved[2]);
@@ -52,8 +50,6 @@ static void cpos_object_put(struct cpos_object *obj)
 		return;
 	if (obj->owner)
 		put_task_struct(obj->owner);
-	if (obj->fd_file)
-		fput(obj->fd_file);
 	kfree(obj);
 }
 
@@ -111,13 +107,14 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		return -EACCES;
 	if (cmd == CPOS_IOC_OBJECT_CREATE) {
 		struct cpos_object_request req;
-		struct file *fd_file = NULL;
 
 		if (copy_from_user(&req, user, sizeof(req)))
 			return -EFAULT;
 		if (req.size != sizeof(req) || !cpos_reserved_zero(req.reserved) ||
 		    req.handle || req.type < CPOS_OBJECT_EVENT || req.type > CPOS_OBJECT_FD_REF)
 			return -EINVAL;
+		if (req.type == CPOS_OBJECT_FD_REF)
+			return -EOPNOTSUPP;
 		if (req.type == CPOS_OBJECT_EVENT && (req.maximum_value || req.initial_value > 1))
 			return -EINVAL;
 		if (req.type == CPOS_OBJECT_MUTEX && (req.maximum_value || req.initial_value))
@@ -125,23 +122,9 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		if (req.type == CPOS_OBJECT_SEMAPHORE &&
 		    (!req.maximum_value || req.initial_value > req.maximum_value))
 			return -EINVAL;
-		if (req.type == CPOS_OBJECT_FD_REF) {
-			if (req.maximum_value || req.initial_value > INT_MAX)
-				return -EINVAL;
-			fd_file = fget((int)req.initial_value);
-			if (!fd_file)
-				return -EBADF;
-			if (fd_file->f_op == &cpos_fops) {
-				fput(fd_file);
-				return -ELOOP;
-			}
-		}
 		obj = kzalloc(sizeof(*obj), GFP_KERNEL);
-		if (!obj) {
-			if (fd_file)
-				fput(fd_file);
+		if (!obj)
 			return -ENOMEM;
-		}
 		refcount_set(&obj->refs, 1);
 		spin_lock_init(&obj->lock);
 		init_waitqueue_head(&obj->waiters);
@@ -150,7 +133,6 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		obj->maximum = req.maximum_value;
 		obj->handle = req.handle;
 		obj->signaled = req.initial_value != 0;
-		obj->fd_file = fd_file;
 		mutex_lock(&ctx->lock);
 		if (ctx->object_count == CPOS_MAX_OBJECTS || !ctx->next_handle) {
 			mutex_unlock(&ctx->lock);
@@ -213,27 +195,11 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		if (op.size != sizeof(op) || op.reserved0 || !cpos_reserved_zero(op.reserved) ||
 		    !op.handle || op.timeout_ms > CPOS_MAX_WAIT_MS)
 			return -EINVAL;
+		if (op.operation == CPOS_OP_FD_GET)
+			return -EOPNOTSUPP;
 		obj = cpos_object_find_get(ctx, op.handle);
 		if (!obj)
 			return -ENOENT;
-		if (op.operation == CPOS_OP_FD_GET && obj->type == CPOS_OBJECT_FD_REF) {
-			int newfd = get_unused_fd_flags(O_CLOEXEC);
-
-			if (newfd < 0) {
-				cpos_object_put(obj);
-				return newfd;
-			}
-			op.timeout_ms = newfd;
-			if (copy_to_user(user, &op, sizeof(op))) {
-				put_unused_fd(newfd);
-				cpos_object_put(obj);
-				return -EFAULT;
-			}
-			get_file(obj->fd_file);
-			fd_install(newfd, obj->fd_file);
-			cpos_object_put(obj);
-			return 0;
-		}
 		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_EVENT) {
 			spin_lock_irqsave(&obj->lock, flags);
 			obj->signaled = true;

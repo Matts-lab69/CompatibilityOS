@@ -59,18 +59,14 @@ type, and type-specific initial/max values. Event uses initial 0 or 1 and max
 0; it is manual-reset/latched (`SIGNAL` sets, `RELEASE` resets). Mutex uses
 initial 0 and max 0; successful wait acquires it and only the owning Linux task
 may `RELEASE` it. Semaphore requires max > 0 and initial <= max; `SIGNAL`
-increments and wait decrements. FD_REF uses `initial_value` as a nonnegative
-Linux fd and max 0; creation pins it with `fget()`. Any file whose operations
-are `/dev/compat` operations is rejected with `ELOOP`, preventing direct,
-indirect, and self-referential CPOS fd-reference cycles. `CPOS_IOC_OBJECT_OP` uses
+increments and wait decrements. `FD_REF` and `FD_GET` are reserved and return
+`EOPNOTSUPP`; descriptor transfer needs LSM authorization and a lifetime
+model that prevents indirect reference cycles. `CPOS_IOC_OBJECT_OP` uses
 `handle` and operation; `WAIT` accepts timeout milliseconds (zero polls, max
 24 hours), interrupted waits return `EINTR`, timed-out waits `ETIMEDOUT`, and a
 waiter whose object is dropped returns `EIDRM`. `SIGNAL` applies to event and
-semaphore; `RELEASE` resets events or releases an owned mutex. `FD_GET` on an
-FD_REF installs a new close-on-exec descriptor and returns it in
-`timeout_ms`. Dropping or closing the owning `/dev/compat` open releases its
-object reference; fd refs use `fput()` exactly once when the object is finally
-destroyed. A descriptor already returned by FD_GET remains independently valid.
+semaphore; `RELEASE` resets events or releases an owned mutex. Dropping or
+closing the owning `/dev/compat` open releases its object reference.
 
 Each open captures its filesystem UID; v2 ioctl calls from a different
 filesystem UID fail `EACCES`. This blocks access after credential changes but
