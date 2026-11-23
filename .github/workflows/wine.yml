@@ -3,6 +3,7 @@ name: Wine CI
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/wine.yml', 'ci/**', 'scripts/**', 'patches/**', 'tests/**', 'runner/**', 'packaging/**', 'recipes/**']
   workflow_dispatch:
 permissions:
   contents: read

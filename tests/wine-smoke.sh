@@ -56,8 +56,16 @@ check_dry() {
         [[ ! -e $XDG_CONFIG_HOME/dry && ! -e $XDG_DATA_HOME/dry ]]
 }
 failed=0
-for check in dry start socket msi paths wow64; do
-    if ( "check_$check" ); then printf 'ok %s\n' "$check";
+report() {
+    local check=$1
+    shift
+    if ( "$@" ); then printf 'ok %s\n' "$check";
     else printf 'FAIL %s\n' "$check"; failed=1; fi
-done
+}
+report dry check_dry
+report start check_start
+report socket check_socket
+report msi check_msi
+report paths check_paths
+report wow64 check_wow64
 exit "$failed"
