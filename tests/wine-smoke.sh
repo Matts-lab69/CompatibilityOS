@@ -25,9 +25,22 @@ msi="$PWD/probe.msi"
 app() { timeout 90 "$runner" --app 'smoke' -- "$@"; }
 check_start() { "$wine" --version && app "$exe64" && grep -E 'cpos-sync: (ntsync|wineserver)' "$XDG_CONFIG_HOME/smoke/wine.log"; }
 check_desktop_log() {
-    local output
-    output=$(timeout 90 "$runner" --desktop --app 'desktop-log' -- "$exe64" 2>&1) || return
-    [[ -z $output ]] && grep -Fx 'PE64 started' "$XDG_CONFIG_HOME/desktop-log/wine.log"
+    local output log="$XDG_CONFIG_HOME/desktop-log/wine.log"
+    if ! output=$(timeout 90 "$runner" --desktop --app 'desktop-log' -- "$exe64" 2>&1); then
+        printf 'Desktop launch failed: %s\n' "$output" >&2
+        if [[ -f $log ]]; then tail -n 30 -- "$log" >&2; fi
+        return 1
+    fi
+    if [[ -n $output ]]; then
+        printf 'Unexpected desktop console output: %s\n' "$output" >&2
+        return 1
+    fi
+    # A Windows text-mode stdout redirected to a file can emit CRLF.
+    if ! grep -Ex $'PE64 started\r?' "$log"; then
+        printf 'Missing Windows startup marker in the desktop log\n' >&2
+        if [[ -f $log ]]; then tail -n 30 -- "$log" >&2; fi
+        return 1
+    fi
 }
 check_sync_fallback() {
     CPOS_SYNC=wineserver timeout 90 "$runner" --app 'sync-fallback' -- "$exe64" &&
