@@ -19,3 +19,22 @@ jobs:
         run: |
           make -C 'cpos-peload' CC=clang check
           make -C 'cpos-peload' CC=clang fuzz
+  kernel:
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 15
+    steps:
+      - name: Install container build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential git linux-headers-generic
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compile the experimental module without loading it
+        shell: bash
+        run: |
+          headers=$(find '/usr/src' -maxdepth 1 -type d -name 'linux-headers-*-generic' | sort -V | tail -n 1)
+          test -n "$headers"
+          make -C "$headers" M="$PWD/cpos-kernel" modules
+          test -s 'cpos-kernel/cpos.ko'
