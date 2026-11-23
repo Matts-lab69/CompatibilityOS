@@ -34,6 +34,8 @@ The proposed mapping is intentionally app-scoped for writable application data w
 
 ## Reversibility and user access
 
+**HIPÓTESIS — XDG folders.** When `xdg-user-dir` is installed, the runner resolves Documents, Desktop and Downloads from the user's configuration, maps them through Wine's native DOS-device path table (`W:`, `X:`, `Y:`), and records both modern GUID and applicable legacy names in `User Shell Folders`. It does not create host directories. An absent resolver leaves Wine defaults; an explicit root mapping or an existing conflicting drive is rejected. When multiple folders resolve to one host directory, a reverse DOS lookup can select any matching alias. This exposes the configured folders to the app; it is not containment.
+
 **HYPOTHESIS.** Keep the mapping reversible and explicit through CLI arguments, file dialogs, and drag-and-drop (DnD). Each route should resolve to the same configured mount/path policy, and users should be able to inspect or change those mappings. Exact UX and permission semantics are not specified here.
 
 **Design decision.** Implement a path-table patch in Wine. Discard per-app prefixes and per-app mounts with a minimal `drive_c`. Mapping in both directions must agree with Windows known-folder results.

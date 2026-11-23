@@ -93,6 +93,36 @@ if [[ ! -f $prefix/.cpos-initialized ]]; then
     "$wineserver" -w 9>&-
     printf '%s\n' "$version" > "$prefix/.cpos-initialized"
 fi
+if command -v xdg-user-dir >/dev/null; then
+    shell_folders='HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
+    folder_ids=('{FDD39AD0-238F-46AF-ADB4-6C85480369C7}' '{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}' '{374DE290-123F-4565-9164-39C4925E467B}')
+    folder_names=('DOCUMENTS' 'DESKTOP' 'DOWNLOAD')
+    legacy_names=('Personal' 'Desktop' '')
+    drives=('w' 'x' 'y')
+    for i in "${!drives[@]}"; do
+        target=$(xdg-user-dir "${folder_names[i]}")
+        [[ $target == /* ]] || fail "invalid XDG path for ${folder_names[i]}"
+        target=$(realpath -m -- "$target")
+        [[ $target != / ]] || fail 'not mapping the filesystem root as a known folder'
+        drive=${drives[i]}
+        link="$prefix/dosdevices/$drive:"
+        marker="$prefix/.cpos-folder-$drive"
+        if [[ -e $link || -L $link ]]; then
+            [[ -L $link && $(readlink -- "$link") == "$target" ]] ||
+                [[ -f $marker && -L $link && $(readlink -- "$link") == "$(< "$marker")" ]] ||
+                fail "drive $drive: already used by the application"
+        fi
+        if [[ -f $marker && -L $link && $(< "$marker") == "$target" && $(readlink -- "$link") == "$target" ]]; then
+            continue
+        fi
+        ln -sfnT -- "$target" "$link"
+        run_wine 'reg.exe' add "$shell_folders" /v "${folder_ids[i]}" /t REG_SZ /d "${drive^^}:\\" /f
+        if [[ -n ${legacy_names[i]} ]]; then
+            run_wine 'reg.exe' add "$shell_folders" /v "${legacy_names[i]}" /t REG_SZ /d "${drive^^}:\\" /f
+        fi
+        printf '%s\n' "$target" > "$marker"
+    done
+fi
 if [[ -x $bundle/libexec/migrate-recipes ]]; then
     "$bundle/libexec/migrate-recipes" "$app" "$bundle" 9>&-
 fi
