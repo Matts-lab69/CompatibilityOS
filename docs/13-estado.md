@@ -15,6 +15,8 @@
 | B4 — Versioned ABI | HECHO (layout scope) | `f34695b`, `83f7783`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45167762949): documented v1/v2 and compile-time userspace layout checks passed. Runtime behavior remains part of B2. |
 | B5 — Phase 2 status documentation | HECHO (snapshot) | `9c3c320`: [design and limitations](12-fase2.md) record the green [Phase 2 run](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45167762949). Refresh when experimental coverage changes. |
 
+**HECHO VERIFICADO — further A1 research:** the [`esync`](https://github.com/zfigura/wine/commit/4838aa7f5c21493e7c0504b7819827cd0f536923) and [`esync-rebased`](https://github.com/zfigura/wine/commit/ce793468b04f0fd6a3e5e2653885ab15803cecfe) branch tips both date from 2018, according to the commit metadata. Neither establishes compatibility with the fixed 11.20 source. **SIN ANALIZAR:** a forward-port and its file-level provenance. No environment flag can enable a backend absent from the current build.
+
 ## Repository footprint
 
 **HECHO VERIFICADO:** `wc -l` on tracked non-Markdown files, including comments, blank lines, configuration and diff headers. This is physical line count, not executable code count. `du -sb` measured 586,443 apparent bytes including `.git` (390,593 bytes); `du -sh` reported 3.6 MiB allocated. Before the snapshot commit, `df -h "$HOME"` reported 58 GiB available.
