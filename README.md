@@ -4,7 +4,7 @@ I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or
 
 **Status: documentation only.** I haven't published binaries, CI workflows, installers, patches, registrations, or runnable tests. I'm targeting Gentoo/OpenRC with COSMIC first and plan to offer installation from GitHub. I'm aiming for under three months for Phase 1, but won't commit to a date without measurements.
 
-**License:** I haven't chosen a license yet.
+I license my standalone project code under [MIT](LICENSE) and my patches to Wine under `LGPL-2.1-or-later`.
 
 - [Design, audit, and measurement documents](docs/README.md)
 - [Patch series](patches/README.md), [internal runner](runner/README.md), and [application recipes](recipes/README.md)

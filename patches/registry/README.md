@@ -1,3 +1,3 @@
 # Registry patches
 
-Reserved only if the selected [registry design](../../docs/03-registro.md) needs upstream changes. Both designs remain pending user decision; this directory contains no patches.
+I use an [effective per-app registry copy](../../docs/03-registro.md), not an overlay. I reserve this directory for any necessary Wine integration patches; it contains no patches yet.

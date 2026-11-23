@@ -2,25 +2,25 @@
 
 ## Status and labels
 
-Both alternatives below are **PENDING USER DECISION**. Neither is selected. No implementation or migration test is claimed.
+**DECISION.** I use an effective registry copy per app in Phase 1. I am not implementing deltas for now. No implementation or migration test is claimed.
 
 - **VERIFIED FACT** identifies behavior directly shown by pinned upstream source.
 - **HYPOTHESIS** identifies a proposed CompatibilityOS design or expected consequence.
 - **NOT ANALYZED** marks unanswered compatibility or implementation questions.
 
-References are pinned to Wine commit [`7298a818b79446bae153b8d5aa27235ab3703bf9`](https://github.com/wine-mirror/wine/tree/7298a818b79446bae153b8d5aa27235ab3703bf9).
+**DECISION — single Wine pin.** I use Wine 11.20 at [`7298a818b79446bae153b8d5aa27235ab3703bf9`](https://github.com/wine-mirror/wine/tree/7298a818b79446bae153b8d5aa27235ab3703bf9) as the only Phase 1 base. Other revisions in the audit are references, not additional pins.
 
-## Alternative A — effective per-app copy
+## Selected — effective per-app copy
 
-**HYPOTHESIS — PENDING USER DECISION.** Keep a versioned, immutable base and seed an effective per-app copy under `~/.config/<app>/`. Apply versioned `.reg` migrations to that effective state, rather than replaying migrations on every launch. This is the **recommended** alternative, with **medium** estimated complexity.
+**DECISION.** I seed `~/.config/<app>/` from a versioned, immutable base. I apply recipe `.reg` files as versioned migrations to the effective copy rather than replaying them on every launch.
 
-The copy boundary, migration ordering, rollback policy, and exact registry files need implementation design. “Recommended” expresses a proposal only; it is not approval or a selected architecture.
+**NOT ANALYZED.** The copy boundary, migration ordering and rollback policy still need validation.
 
 **HYPOTHESIS — trade-off.** This preserves Wine's single-tree behavior without patching server registry semantics. It duplicates base data per app and needs upgrade and rollback rules that preserve deletions and MSI state.
 
-## Alternative B — deltas and tombstones
+## Deferred — deltas and tombstones
 
-**HYPOTHESIS — PENDING USER DECISION.** Keep the immutable base and store only per-app registry deltas, including tombstones for deleted values or keys. This is estimated **high** complexity because reads, writes, deletes, enumeration, and upgrades must consistently compose the base and overlay.
+**HYPOTHESIS.** A delta-only overlay needs tombstones for deleted values or keys. I estimate high complexity because reads, writes, deletes, enumeration, and upgrades must consistently compose the base and overlay.
 
 No delta overlay is implemented or tested. Tombstone semantics and conflict handling remain undefined.
 
@@ -32,11 +32,10 @@ No delta overlay is implemented or tested. Tombstone semantics and conflict hand
 
 **VERIFIED FACT.** The inspected save path writes complete branches, not deltas. `save_branch` can truncate the target of a symlink or the inode shared by hard links. Do not link mutable registry files back to the base. See pinned [`server/registry.c`, lines 2016–2095](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/server/registry.c#L2016-L2095).
 
-These source observations do not settle the CompatibilityOS decision or establish behavior across upgrades or multiple concurrent app instances.
+These source observations do not establish behavior across upgrades or multiple concurrent app instances.
 
-## Decisions and open questions
+## Open questions
 
-- **PENDING USER DECISION:** Select Alternative A or Alternative B.
 - **NOT ANALYZED:** Registry sharing/isolation requirements for apps that communicate through common Windows registry state.
 - **NOT ANALYZED:** Migration rollback, interrupted updates, concurrent writers, and compatibility with arbitrary imported `.reg` files.
 - **NOT ANALYZED:** Whether the Wine path table and the selected registry strategy can be combined without application-specific exceptions.

@@ -5,7 +5,7 @@
 1. [Objective and limits](00-objetivo.md)
 2. [Phase 1 architecture](01-arquitectura.md)
 3. [Path mapping](02-rutas.md)
-4. [Registry: pending user decision](03-registro.md)
+4. [Registry: effective per-app copy](03-registro.md)
 5. [Wine source audit](04-auditoria-wine.md)
 6. [Measurement protocol](05-medicion.md)
 7. [Licenses and provenance](06-licencias.md)
