@@ -56,6 +56,17 @@ index fa9138d..8803eb4 100644
      asprintf( &dir, "/tmp/.wine-%u/server-%llx-%llx", getuid(), (unsigned long long)dev, (unsigned long long)ino );
  #endif
      return dir;
+diff --git a/include/Makefile.in b/include/Makefile.in
+--- a/include/Makefile.in
++++ b/include/Makefile.in
+@@ -1116,6 +1116,7 @@
+ 	wine/afd.h \
+ 	wine/asm.h \
+ 	wine/atsvc.idl \
+ 	wine/condrv.h \
++	wine/cpos_runtime.h \
+ 	wine/dcetypes.idl \
+ 	wine/debug.h \
 diff --git a/include/wine/cpos_runtime.h b/include/wine/cpos_runtime.h
 new file mode 100644
 index 0000000..91066ed
