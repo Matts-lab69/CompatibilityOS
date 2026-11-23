@@ -38,3 +38,5 @@ jobs:
           test -n "$headers"
           make -C "$headers" M="$PWD/cpos-kernel" modules
           test -s 'cpos-kernel/cpos.ko'
+      - name: Check ABI v1 from userspace without opening the device
+        run: cc -std=c11 -Wall -Wextra -Werror -fsyntax-only 'cpos-kernel/abi_layout.c'

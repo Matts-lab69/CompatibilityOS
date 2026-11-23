@@ -13,6 +13,6 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 ## Kernel boundary
 
-**HIPÓTESIS:** `/dev/compat` starts with ABI discovery and bounded per-open handle bookkeeping only. No cross-user object namespace or message queues are implemented by the skeleton. The device remains experimental and owner-only if loaded outside this project; this project does not load it. See the module's ABI document for supported requests, layouts and errors. Shared NT objects and cross-process signaling require a separate review.
+**HIPÓTESIS:** `/dev/compat` starts with ABI discovery and bounded per-open handle bookkeeping only. No cross-user object namespace or message queues are implemented by the skeleton. The device remains experimental and owner-only if loaded outside this project; this project does not load it. See [ABI v1](../cpos-kernel/ABI.md) for supported requests, layouts and errors. Shared NT objects and cross-process signaling require a separate review.
 
 **SIN ANALIZAR:** Windows ABI compatibility, deployment permissions, loader TLS and imports at execution time, drivers, messaging, and cross-process handle semantics. No performance claims.

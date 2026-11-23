@@ -42,3 +42,6 @@ struct cpos_token_request {
 
 No cross-user objects, handle semantics, access masks, or signaling are
 implemented. This ABI is experimental and may change before any deployment.
+An incompatible layout or command change requires a new ABI version and ioctl
+number rather than silently reinterpreting a v1 request. CI compiles the
+layout assertions as ordinary userspace C without opening the device.
