@@ -1,0 +1,40 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Map additional per-app Windows write directories.
+
+diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
+index f5837b6..5196a47 100644
+--- a/dlls/ntdll/unix/file.c
++++ b/dlls/ntdll/unix/file.c
+@@ -3398,8 +3398,16 @@ static NTSTATUS lookup_unix_name( int root_fd, OBJECT_ATTRIBUTES *attr, UNICODE_
+ }
+ 
+ 
+-static const WCHAR cpos_installerW[] = {'C',':','\\','W','i','n','d','o','w','s','\\',
+-                                        'I','n','s','t','a','l','l','e','r'};
++#define CPOS_WINDOWS 'C',':','\\','W','i','n','d','o','w','s','\\'
++static const WCHAR cpos_installerW[] = {CPOS_WINDOWS,'I','n','s','t','a','l','l','e','r'};
++static const WCHAR cpos_tempW[] = {CPOS_WINDOWS,'T','e','m','p'};
++static const WCHAR cpos_spoolW[] = {CPOS_WINDOWS,'S','y','s','t','e','m','3','2','\\','s','p','o','o','l'};
++static const WCHAR cpos_fontsW[] = {CPOS_WINDOWS,'F','o','n','t','s'};
++static const WCHAR cpos_assemblyW[] = {CPOS_WINDOWS,'a','s','s','e','m','b','l','y'};
++static const WCHAR cpos_dotnetW[] = {CPOS_WINDOWS,'M','i','c','r','o','s','o','f','t','.','N','E','T','\\',
++                                     'a','s','s','e','m','b','l','y'};
++static const WCHAR cpos_winsxsW[] = {CPOS_WINDOWS,'W','i','n','S','x','S'};
++#undef CPOS_WINDOWS
+ 
+ static const struct cpos_route
+ {
+@@ -3409,6 +3417,12 @@ static const struct cpos_route
+ } cpos_routes[] =
+ {
+     {cpos_installerW, ARRAY_SIZE(cpos_installerW), "CPOS_WINDOWS_INSTALLER"},
++    {cpos_tempW, ARRAY_SIZE(cpos_tempW), "CPOS_WINDOWS_TEMP"},
++    {cpos_spoolW, ARRAY_SIZE(cpos_spoolW), "CPOS_WINDOWS_SPOOL"},
++    {cpos_fontsW, ARRAY_SIZE(cpos_fontsW), "CPOS_WINDOWS_FONTS"},
++    {cpos_assemblyW, ARRAY_SIZE(cpos_assemblyW), "CPOS_WINDOWS_ASSEMBLY"},
++    {cpos_dotnetW, ARRAY_SIZE(cpos_dotnetW), "CPOS_WINDOWS_DOTNET"},
++    {cpos_winsxsW, ARRAY_SIZE(cpos_winsxsW), "CPOS_WINDOWS_WINSXS"},
+ };
+ 
+ /* The runner supplies normalized absolute directory names without a trailing slash. */

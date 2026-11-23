@@ -28,6 +28,25 @@ static int known_folders(void)
     return 0;
 }
 
+static int writable_windows(void)
+{
+    static const WCHAR *names[] = {
+        L"C:\\Windows\\Temp\\cpos-probe.txt",
+        L"C:\\Windows\\System32\\spool\\cpos-probe.txt",
+        L"C:\\Windows\\Fonts\\cpos-probe.txt",
+        L"C:\\Windows\\assembly\\cpos-probe.txt",
+        L"C:\\Windows\\Microsoft.NET\\assembly\\cpos-probe.txt",
+        L"C:\\Windows\\WinSxS\\cpos-probe.txt",
+    };
+    for (unsigned i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+    {
+        HANDLE file = CreateFileW(names[i], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (file == INVALID_HANDLE_VALUE) { printf("Writable route %u: %lu\n", i, GetLastError()); return 1; }
+        CloseHandle(file);
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     const char *key = "Software\\CompatibilityOS\\ViewProbe";
@@ -37,6 +56,7 @@ int main(int argc, char **argv)
 
     if (argc > 1 && !strcmp(argv[1], "hold")) { Sleep(8000); return 0; }
     if (argc > 1 && !strcmp(argv[1], "known-folders")) return known_folders();
+    if (argc > 1 && !strcmp(argv[1], "writable-windows")) return writable_windows();
     if (argc > 1 && !strcmp(argv[1], "path"))
     {
         file = CreateFileW(L"C:\\Windows\\Installer\\cpos-probe.txt", GENERIC_WRITE, 0, NULL,

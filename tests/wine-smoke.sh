@@ -59,6 +59,13 @@ check_known_folders() {
         [[ -f $HOME/My\ Documents/cpos-known-folder.txt && -f $HOME/My\ Desktop/cpos-known-folder.txt &&
            -f $HOME/My\ Downloads/cpos-known-folder.txt ]]
 }
+check_windows_writes() {
+    local directory
+    app "$exe64" 'writable-windows' || return
+    for directory in 'temp' 'spool' 'fonts' 'assembly' 'dotnet-assembly' 'winsxs'; do
+        [[ -f $XDG_DATA_HOME/smoke/windows-$directory/cpos-probe.txt ]] || return 1
+    done
+}
 check_dry() {
     timeout 10 "$runner" --dry-run --app dry -- "$exe64" &&
         [[ ! -e $XDG_CONFIG_HOME/dry && ! -e $XDG_DATA_HOME/dry ]]
@@ -71,5 +78,6 @@ if (check_socket); then printf 'ok socket\n'; else report socket; fi
 if (check_msi); then printf 'ok msi\n'; else report msi; fi
 if (check_paths); then printf 'ok paths\n'; else report paths; fi
 if (check_known_folders); then printf 'ok known-folders\n'; else report known-folders; fi
+if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if (check_wow64); then printf 'ok wow64\n'; else report wow64; fi
 exit "$failed"

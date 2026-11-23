@@ -79,6 +79,12 @@ export WINEPREFIX="$prefix" WINESERVER="$wineserver"
 export CPOS_SESSION=1 CPOS_QUIET_UPDATE=1
 CPOS_WINDOWS_INSTALLER=$(realpath -e -- "$installer")
 export CPOS_WINDOWS_INSTALLER
+for route in 'TEMP:temp' 'SPOOL:spool' 'FONTS:fonts' 'ASSEMBLY:assembly' 'DOTNET:dotnet-assembly' 'WINSXS:winsxs'; do
+    target="$app_data/windows-${route#*:}"
+    mkdir -p -- "$target"
+    target=$(realpath -e -- "$target")
+    export "CPOS_WINDOWS_${route%%:*}=$target"
+done
 unset WINEFSYNC WINEESYNC
 if [[ -c /dev/ntsync ]] && ( : < '/dev/ntsync' ) 2>/dev/null; then
     printf 'cpos-run: /dev/ntsync accessible; wineserver reports the selected backend\n' >&2
