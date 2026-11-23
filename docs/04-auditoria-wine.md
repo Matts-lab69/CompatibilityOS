@@ -55,6 +55,8 @@ This is a source audit of Wine commit [`7298a818b79446bae153b8d5aa27235ab3703bf9
 
 **NOT ANALYZED.** Whether launching the SCM independently is sufficient in a session that skips the bootstrap; a demand-start RPCSS still requires the SCM.
 
+**Decision — keep upstream service policy.** Keep the SCM and Wine bootstrap unchanged: COM already starts RpcSs on demand, and the desktop window request already starts Explorer conditionally. PlugPlay is automatic at this pin; do not force demand-start without evidence that device setup and enumeration can tolerate it. The new smoke probe checks SCM connectivity and the configured RpcSs and PlugPlay start types. **SIN ANALIZAR:** real COM activation, device notifications and Explorer process lifetime across multiple desktops. Configuration alone does not establish any of these behaviors.
+
 **VERIFIED FACT.** The inspected `ntsync` server/in-process synchronization path checks a guard header and device; see [`server/inproc_sync.c`, lines 40–52](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/server/inproc_sync.c#L40-L52).
 
 ## Reference revisions and what they establish

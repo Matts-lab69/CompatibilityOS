@@ -47,6 +47,31 @@ static int writable_windows(void)
     return 0;
 }
 
+static int check_service(SC_HANDLE scm, const WCHAR *name, DWORD start)
+{
+    union { QUERY_SERVICE_CONFIGW config; BYTE space[4096]; } buffer;
+    SC_HANDLE service = OpenServiceW(scm, name, SERVICE_QUERY_CONFIG);
+    DWORD needed;
+    BOOL ok;
+    if (!service) return 1;
+    ok = QueryServiceConfigW(service, &buffer.config, sizeof(buffer), &needed);
+    CloseServiceHandle(service);
+    if (!ok || buffer.config.dwStartType != start) return 1;
+    return 0;
+}
+
+static int services(void)
+{
+    SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
+    int bad;
+    if (!scm) { printf("OpenSCManagerW: %lu\n", GetLastError()); return 1; }
+    bad = check_service(scm, L"RpcSs", SERVICE_DEMAND_START) |
+          check_service(scm, L"PlugPlay", SERVICE_AUTO_START);
+    CloseServiceHandle(scm);
+    if (bad) puts("Unexpected RpcSs or PlugPlay configuration");
+    return bad;
+}
+
 int main(int argc, char **argv)
 {
     const char *key = "Software\\CompatibilityOS\\ViewProbe";
@@ -57,6 +82,7 @@ int main(int argc, char **argv)
     if (argc > 1 && !strcmp(argv[1], "hold")) { Sleep(8000); return 0; }
     if (argc > 1 && !strcmp(argv[1], "known-folders")) return known_folders();
     if (argc > 1 && !strcmp(argv[1], "writable-windows")) return writable_windows();
+    if (argc > 1 && !strcmp(argv[1], "services")) return services();
     if (argc > 1 && !strcmp(argv[1], "path"))
     {
         file = CreateFileW(L"C:\\Windows\\Installer\\cpos-probe.txt", GENERIC_WRITE, 0, NULL,
