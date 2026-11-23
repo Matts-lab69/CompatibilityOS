@@ -16,6 +16,8 @@
 
 **HIPÓTESIS — runner integration.** `cpos-run` copies the three registry files into `~/.config/<app>/wine/` under a per-app lock, without linking to the base. It then initializes Wine before invoking the migration helper. Dry runs do not copy files or start Wine; runtime validation is pending CI.
 
+**HIPÓTESIS — migration ledger.** The [recipe schema](../recipes/README.md) accepts ordered, append-only `.reg` files. A migration stores its checksum only after successful import and server shutdown; changed completed migrations fail rather than being reapplied. Interrupted imports may be retried, so each migration must be idempotent. Automatic rollback and live registry sharing remain **SIN ANALIZAR**.
+
 **NOT ANALYZED.** The copy boundary, migration ordering and rollback policy still need validation.
 
 **HYPOTHESIS — trade-off.** This preserves Wine's single-tree behavior without patching server registry semantics. It duplicates base data per app and needs upgrade and rollback rules that preserve deletions and MSI state.

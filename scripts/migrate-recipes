@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+set -euo pipefail
+
+# shellcheck source=scripts/recipe-schema.sh
+source "${BASH_SOURCE[0]%/*}/recipe-schema.sh"
+app=$1
+bundle=$2
+recipe="$bundle/recipes/$app"
+[[ -d $recipe || -L $recipe ]] || exit 0
+read_recipe "$recipe" || { printf 'Invalid recipe: %s\n' "$app" >&2; exit 1; }
+state="${WINEPREFIX:?}/.cpos-migrations"
+mkdir -p -- "$state"
+for migration in "${recipe_migrations[@]}"; do
+    number=${migration##*/}
+    current=$(sha256sum < "$migration")
+    marker="$state/$number"
+    if [[ -f $marker ]]; then
+        [[ $(<"$marker") == "$current" ]] || { printf 'Changed migration: %s\n' "$number" >&2; exit 1; }
+        continue
+    fi
+    windows_file="\\\\?\\unix${migration//\//\\}"
+    "$bundle/wine/bin/wine" 'reg.exe' import "$windows_file"
+    "${WINESERVER:?}" -w
+    printf '%s\n' "$current" > "$marker.tmp"
+    mv -T -- "$marker.tmp" "$marker"
+done

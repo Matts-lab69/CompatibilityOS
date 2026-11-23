@@ -1,0 +1,5 @@
+Windows Registry Editor Version 5.00
+; SPDX-License-Identifier: MIT
+
+[HKEY_CURRENT_USER\Software\CompatibilityOS\ExampleExe]
+"Configured"=dword:00000001

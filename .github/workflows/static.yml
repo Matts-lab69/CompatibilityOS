@@ -14,5 +14,6 @@ jobs:
       - name: Check shell scripts and patch series
         shell: bash
         run: |
-          git ls-files -z '*.sh' 'runner/cpos-run' | xargs -0 -r shellcheck
+          git ls-files -z '*.sh' 'runner/cpos-run' 'scripts/migrate-recipes' | xargs -0 -r shellcheck -x
           bash 'tests/check-series.sh'
+          bash 'tests/check-recipes.sh'
