@@ -1,0 +1,58 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Report the selected synchronization backend.
+
+diff --git a/server/inproc_sync.c b/server/inproc_sync.c
+index 522d9a4..3ffd2f4 100644
+--- a/server/inproc_sync.c
++++ b/server/inproc_sync.c
+@@ -23,6 +23,8 @@
+ #include <assert.h>
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
+ 
+ #include "ntstatus.h"
+ #include "winternl.h"
+@@ -33,6 +35,13 @@
+ #include "thread.h"
+ #include "user.h"
+ 
++static void cpos_report_sync( const char *backend )
++{
++    const char *session = getenv( "CPOS_SESSION" );
++
++    if (session && !strcmp( session, "1" )) fprintf( stderr, "cpos-sync: %s\n", backend );
++}
++
+ #ifdef HAVE_LINUX_NTSYNC_H
+ # include <linux/ntsync.h>
+ #endif
+@@ -47,7 +56,11 @@
+ int get_inproc_device_fd(void)
+ {
+     static int fd = -2;
+-    if (fd == -2) fd = open( "/dev/ntsync", O_CLOEXEC | O_RDONLY );
++    if (fd == -2)
++    {
++        fd = open( "/dev/ntsync", O_CLOEXEC | O_RDONLY );
++        cpos_report_sync( fd >= 0 ? "ntsync" : "wineserver" );
++    }
+     return fd;
+ }
+ 
+@@ -227,6 +240,13 @@ static int get_obj_inproc_sync( struct object *obj, int *type )
+ 
+ int get_inproc_device_fd(void)
+ {
++    static int reported;
++
++    if (!reported++)
++    {
++        cpos_report_sync( "wineserver" );
++        reported = 1;
++    }
+     return -1;
+ }
+ 

@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+set -euo pipefail
+
+fail() { printf 'cpos-run: %s\n' "$*" >&2; exit 1; }
+dry=0
+app=''
+while (( $# )); do
+    case "$1" in
+        --dry-run) dry=1; shift ;;
+        --app) (( $# >= 2 )) || fail 'missing application ID'; app=$2; shift 2 ;;
+        --) shift; break ;;
+        -*) fail "unknown option: $1" ;;
+        *) break ;;
+    esac
+done
+(( $# >= 1 )) || fail 'usage: cpos-run [--dry-run] [--app ID] -- FILE [ARG ...]'
+file=$(realpath -e -- "$1") || fail "cannot resolve: $1"
+shift
+[[ -f $file && -r $file ]] || fail 'input must be a readable local file'
+name=${file##*/}
+kind=${name##*.}
+kind=${kind,,}
+[[ $kind == exe || $kind == msi ]] || fail 'expected an EXE or MSI'
+if [[ -z $app ]]; then
+    digest=$(printf '%s' "$file" | sha256sum)
+    app="cpos-${digest:0:24}"
+fi
+[[ $app =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]] || fail 'invalid application ID'
+
+config_home=${XDG_CONFIG_HOME:-$HOME/.config}
+data_home=${XDG_DATA_HOME:-$HOME/.local/share}
+runtime=${XDG_RUNTIME_DIR:-}
+bundle=${CPOS_BUNDLE:-$data_home/compatibilityos/current}
+app_config="$config_home/$app"
+app_data="$data_home/$app"
+prefix="$app_config/wine"
+installer="$app_data/windows-installer"
+for dir in "$config_home" "$data_home" "$bundle"; do
+    [[ $dir == /* ]] || fail 'configuration and data paths must be absolute'
+done
+
+if (( dry )); then
+    printf 'app=%s operation=%s file=%q registry=%q installer=%q\n' \
+        "$app" "$kind" "$file" "$prefix" "$installer"
+    exit 0
+fi
+
+[[ $runtime == /* && ! -L $runtime && -d $runtime && -O $runtime ]] || fail 'invalid XDG_RUNTIME_DIR'
+[[ $(stat -c '%a' -- "$runtime") == 700 ]] || fail 'XDG_RUNTIME_DIR must be mode 0700'
+bundle=$(realpath -e -- "$bundle") || fail 'installed bundle not found'
+wine="$bundle/wine/bin/wine"
+wineserver="$bundle/wine/bin/wineserver"
+base="$bundle/base"
+[[ -x $wine && -x $wineserver && -f $base/version ]] || fail 'incomplete Wine bundle'
+read -r version < "$base/version"
+[[ $version =~ ^[a-zA-Z0-9._-]+$ ]] || fail 'invalid base version'
+
+umask 077
+mkdir -p -- "$app_config" "$app_data" "$installer"
+exec 9>"$app_config/.cpos.lock"
+flock -x 9
+if [[ ! -e $prefix && ! -L $prefix ]]; then
+    staged=$(mktemp -d -- "$app_config/.wine.XXXXXXXX")
+    trap 'rm -rf -- "$staged"' EXIT
+    for reg in 'system.reg' 'userdef.reg' 'user.reg'; do
+        [[ -f $base/$reg && ! -L $base/$reg ]] || fail "missing base registry file: $reg"
+        cp --reflink=auto -- "$base/$reg" "$staged/$reg"
+        chmod u+rw -- "$staged/$reg"
+    done
+    mkdir -- "$staged/drive_c" "$staged/dosdevices"
+    ln -s -- '../drive_c' "$staged/dosdevices/c:"
+    printf '%s\n' "$version" > "$staged/.cpos-base"
+    mv -T -- "$staged" "$prefix"
+    trap - EXIT
+fi
+[[ -d $prefix && ! -L $prefix && -f $prefix/.cpos-base ]] || fail 'refusing unowned prefix'
+export WINEPREFIX="$prefix" WINESERVER="$wineserver"
+export CPOS_SESSION=1 CPOS_QUIET_UPDATE=1
+CPOS_WINDOWS_INSTALLER=$(realpath -e -- "$installer")
+export CPOS_WINDOWS_INSTALLER
+unset WINEFSYNC WINEESYNC
+if [[ -c /dev/ntsync ]] && ( : < '/dev/ntsync' ) 2>/dev/null; then
+    printf 'cpos-run: /dev/ntsync accessible; wineserver reports the selected backend\n' >&2
+else
+    printf 'cpos-run: /dev/ntsync unavailable; fsync/esync not built, expecting wineserver\n' >&2
+fi
+
+run_wine() { "$wine" "$@" 9>&- 2> >(tee -a -- "$app_config/wine.log" >&2); }
+
+if [[ ! -f $prefix/.cpos-initialized ]]; then
+    run_wine 'wineboot.exe' --init
+    "$wineserver" -w 9>&-
+    printf '%s\n' "$version" > "$prefix/.cpos-initialized"
+fi
+if [[ -x $bundle/libexec/migrate-recipes ]]; then
+    "$bundle/libexec/migrate-recipes" "$app" "$bundle" 9>&-
+fi
+flock -u 9
+
+status=0
+if [[ $kind == msi ]]; then
+    # Use the explicit Unix namespace rather than assuming an exposed Z: drive.
+    windows_file="\\\\?\\unix${file//\//\\}"
+    run_wine 'msiexec.exe' /i "$windows_file" "$@" || status=$?
+else
+    run_wine "$file" "$@" || status=$?
+fi
+if "$wineserver" -w 9>&-; then
+    exit "$status"
+else
+    wait_status=$?
+    (( status != 0 )) || status=$wait_status
+fi
+exit "$status"

@@ -14,6 +14,8 @@
 
 **DECISION.** I seed `~/.config/<app>/` from a versioned, immutable base. I apply recipe `.reg` files as versioned migrations to the effective copy rather than replaying them on every launch.
 
+**HIPÓTESIS — runner integration.** `cpos-run` copies the three registry files into `~/.config/<app>/wine/` under a per-app lock, without linking to the base. It then initializes Wine before invoking the migration helper. Dry runs do not copy files or start Wine; runtime validation is pending CI.
+
 **NOT ANALYZED.** The copy boundary, migration ordering and rollback policy still need validation.
 
 **HYPOTHESIS — trade-off.** This preserves Wine's single-tree behavior without patching server registry semantics. It duplicates base data per app and needs upgrade and rollback rules that preserve deletions and MSI state.
