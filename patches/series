@@ -1,1 +1,2 @@
-# Documentation-only queue: no patch entries.
+# SPDX-License-Identifier: MIT
+# Base: scripts/wine.lock. Apply entries in order, one relative path per line.
