@@ -11,6 +11,8 @@ Neither `cpos-run` nor the installer uses these components. CI may build an out-
 
 The first loader milestone validates x86-64 PE32+ layout, sections, relocation and import metadata, then builds a non-executable staging image. Resolving DLLs, executing entry points, setting GS and emulating Windows services are separate compatibility milestones. Sanitized unit tests and a bounded libFuzzer run use synthetic inputs; CI never executes bytes from those inputs.
 
+**HECHO VERIFICADO:** [Phase 2 run 45147536564](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147536564) compiled the staging loader with warnings as errors, passed the unit checks and completed 5,814,076 fuzz iterations in 21 seconds with a synthetic seed. This is not a compatibility or performance benchmark.
+
 ## Kernel boundary
 
 **HIPÓTESIS:** `/dev/compat` starts with ABI discovery and bounded per-open handle bookkeeping only. No cross-user object namespace or message queues are implemented by the skeleton. The device remains experimental and owner-only if loaded outside this project; this project does not load it. See [ABI v1](../cpos-kernel/ABI.md) for supported requests, layouts and errors. Shared NT objects and cross-process signaling require a separate review.
