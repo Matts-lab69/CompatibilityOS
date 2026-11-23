@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: MIT
 name: Installer verification
 on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Wine CI run from main
+        required: true
+        type: string
   workflow_run:
     workflows: [Wine CI]
     types: [completed]
@@ -11,7 +17,9 @@ permissions:
   contents: read
 jobs:
   installer:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    if: >-
+      github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -21,7 +29,7 @@ jobs:
       - name: Verify installation lifecycle under disposable XDG paths
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends desktop-file-utils shared-mime-info xdg-utils
