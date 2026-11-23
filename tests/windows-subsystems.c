@@ -79,11 +79,18 @@ static int fusion(void)
 {
     typedef HRESULT (WINAPI *create_cache_fn)(void **, DWORD);
     typedef ULONG (WINAPI *release_fn)(void *);
-    HMODULE dll = LoadLibraryW(L"fusion.dll");
+    WCHAR path[1024];
+    DWORD length = GetEnvironmentVariableW(L"CPOS_TEST_FUSION_DLL", path, ARRAYSIZE(path));
+    HMODULE dll;
     create_cache_fn create_cache;
     void *cache = NULL;
     HRESULT hr;
-    if (!dll) { printf("Fusion: fusion.dll unavailable (%lu)\n", GetLastError()); return 1; }
+    if (!length || length >= ARRAYSIZE(path)) {
+        puts("Fusion: expected the packaged builtin DLL path");
+        return 1;
+    }
+    dll = LoadLibraryW(path);
+    if (!dll) { printf("Fusion: packaged fusion.dll could not be loaded (%lu)\n", GetLastError()); return 1; }
     create_cache = (create_cache_fn)GetProcAddress(dll, "CreateAssemblyCache");
     if (!create_cache) { printf("Fusion: CreateAssemblyCache unavailable (%lu)\n", GetLastError()); FreeLibrary(dll); return 1; }
     hr = create_cache(&cache, 0);

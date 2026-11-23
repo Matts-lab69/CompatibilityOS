@@ -120,6 +120,14 @@ if (check_paths); then printf 'ok paths\n'; else report paths; fi
 if (check_known_folders); then printf 'ok known-folders\n'; else report known-folders; fi
 if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
-if app "$PWD/subsystems.exe"; then printf 'ok subsystem-probes\n'; else report subsystem-probes; fi
+fusion_dll="$CPOS_BUNDLE/wine/lib/wine/x86_64-windows/fusion.dll"
+if [[ ! -f $fusion_dll ]]; then
+    printf 'Packaged Fusion DLL missing: %s\n' "$fusion_dll" >&2
+    report subsystem-probes
+elif CPOS_TEST_FUSION_DLL="\\\\?\\unix${fusion_dll//\//\\}" app "$PWD/subsystems.exe"; then
+    printf 'ok subsystem-probes\n'
+else
+    report subsystem-probes
+fi
 if (check_wow64); then printf 'ok wow64\n'; else report wow64; fi
 exit "$failed"
