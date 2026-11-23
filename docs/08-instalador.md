@@ -11,3 +11,5 @@
 **HIPÓTESIS — implementation.** `installer/install.sh` selects an explicit successful Actions run from `main`, verifies GitHub artifact attestations for both files and checks SHA-256 before extraction. It installs under the user's XDG paths, and restores an untouched MIME defaults file on uninstall. If the file has since changed it is left alone; owned MIME/desktop files are removed only if unchanged. Per-app data and registry are retained.
 
 **SIN ANALIZAR.** Signature verification, COSMIC association behavior and binary portability on Gentoo/OpenRC. The installer does not modify the kernel.
+
+**Decision — installer CI.** The follow-up workflow consumes only successful `main` Wine CI runs from this repository and has read-only token permissions. It checks signed installation, rejection of an altered manifest, dry runs, idempotence and restoration in disposable XDG paths. This does not exercise the actual COSMIC file manager.

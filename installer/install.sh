@@ -29,7 +29,9 @@ for tool in update-mime-database update-desktop-database; do
 done
 umask 077
 if [[ $op == uninstall && ! -d $root ]]; then exit 0; fi
+[[ ! -L $root && ! -L $state && ! -L $defaults ]] || fail 'refusing linked installer state'
 mkdir -p -- "$root"
+[[ -O $root && ! -L $root/.lock && ! -L $root/versions ]] || fail 'refusing unowned or linked installer data'
 exec 9>"$root/.lock"
 flock -x 9
 refresh() { update-mime-database "$data/mime"; update-desktop-database "$data/applications"; }
@@ -64,7 +66,6 @@ for path in "$desktop" "$mime"; do
         cmp -s -- "$path" "$state/$item" || fail "refusing to overwrite $path"
     fi
 done
-[[ ! -L $defaults ]] || fail 'refusing symlinked MIME defaults'
 tmp=$(mktemp -d -- "$root/.install.XXXXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT
 gh run download "$run" -R "$repo" -n 'compatibilityos-linux-x86_64' -D "$tmp"
@@ -76,6 +77,7 @@ done
 read -r digest filename extra < "$tmp/SHA256SUMS"
 [[ $digest =~ ^[0-9a-f]{64}$ && $filename == compatibilityos.tar.gz && -z $extra ]] || fail 'invalid hash manifest'
 (cd -- "$tmp"; printf '%s  compatibilityos.tar.gz\n' "$digest" | sha256sum --check --strict -)
+[[ ! -L $version ]] || fail 'refusing linked bundle version'
 mkdir -p -- "$root/versions" "$data/applications" "$data/mime/packages" "$config" "$tmp/bundle"
 if [[ ! -d $version ]]; then
     tar -xzf "$tmp/compatibilityos.tar.gz" --no-same-owner --no-same-permissions -C "$tmp/bundle"
