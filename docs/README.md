@@ -16,3 +16,5 @@
 12. [Live USB baseline](11-linea-base.md)
 13. [Phase 2 experimental design](12-fase2.md)
 14. [Phase 2 archived research](99-fase2.md)
+15. [Implementation follow-up](13-cierre.md)
+16. [Headless subsystem probes](14-servicios.md)

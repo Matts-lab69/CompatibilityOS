@@ -110,7 +110,7 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     if (mprotect(image, image_size, PROT_READ) != 0) goto unsupported;
     int executable_entry = 0;
     for (uint16_t i = 0; i < parsed.section_count; ++i) {
-        const uint8_t *section = data + r32(data + 0x3c) + 24 + r16(data + r32(data + 0x3c) + 20 + 16) + (size_t)i * 40;
+        const uint8_t *section = opt + r16(opt - 4) + (size_t)i * 40;
         uint32_t flags = r32(section + 36), start = parsed.sections[i].rva;
         uint64_t span = parsed.sections[i].virtual_size > parsed.sections[i].raw_size ? parsed.sections[i].virtual_size : parsed.sections[i].raw_size;
         uintptr_t lo = (uintptr_t)image + start;

@@ -20,3 +20,10 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 **HECHO VERIFICADO:** [run 45147978579](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147978579) linked `cpos.ko` in the Ubuntu container and compiled the userspace ABI v1 layout assertions. Nothing loaded the module or opened the device. Earlier checkout failed because the minimal container lacked CA certificates; the corrected run installed the CA bundle without disabling TLS verification.
 
 **SIN ANALIZAR:** Windows ABI compatibility, deployment permissions, loader TLS and imports at execution time, drivers, messaging, and cross-process handle semantics. No performance claims.
+
+## Follow-up implementation
+
+- **HIPÓTESIS:** The fixture loader attempts the PE preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, resolves explicitly allowlisted fixture imports, and invokes an executable entry point using the Microsoft x64 calling convention. This is not a sandbox: use only self-built fixtures. TLS, TEB/PEB, Windows DLL loading and process initialization are not implemented.
+- **HIPÓTESIS:** ABI v2 adds per-open fd references, events, mutexes, semaphores and bounded waits. It is not a named NT namespace, has no ntsync integration, and has not been exercised by loading the module. ABI v1 remains available.
+- **HIPÓTESIS:** The initial synchronous queue dispatches on the owning thread and wakes queued senders on close. It uses pthread primitives, not the device; there is no cross-process dispatch, Windows message pumping or deadlock resolution for cyclic sends.
+- **SIN ANALIZAR — replacing wineserver:** object namespaces and access control, process/thread lifetimes, handle inheritance/duplication, abandoned mutexes, multi-object waits and APCs, async I/O, window ownership, registry state, and compatibility with Wine's client protocol.
