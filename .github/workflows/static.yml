@@ -18,3 +18,14 @@ jobs:
           bash 'tests/check-series.sh'
           bash 'tests/check-recipes.sh'
           bash 'installer/install.sh' --dry-run install 1
+      - name: Validate desktop and MIME templates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends desktop-file-utils shared-mime-info
+          desktop-file-validate 'packaging/mime/compatibilityos.desktop'
+          database=$(mktemp -d)
+          mkdir -p -- "$database/packages"
+          cp -- 'packaging/mime/compatibilityos.xml' "$database/packages/"
+          update-mime-database "$database"
+          grep -Fx '50:application/x-ms-dos-executable:*.exe' "$database/globs2"
+          grep -Fx '50:application/x-msi:*.msi' "$database/globs2"

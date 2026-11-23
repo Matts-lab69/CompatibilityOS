@@ -24,6 +24,9 @@ if (( dry )); then
     printf '%s run=%s bundle=%q desktop=%q mime=%q; preserves app data\n' "$op" "$run" "$root" "$desktop" "$mime"
     exit 0
 fi
+for tool in update-mime-database update-desktop-database; do
+    command -v "$tool" >/dev/null || fail "missing tool: $tool"
+done
 umask 077
 if [[ $op == uninstall && ! -d $root ]]; then exit 0; fi
 mkdir -p -- "$root"
@@ -49,9 +52,7 @@ if [[ $op == uninstall ]]; then
     exit 0
 fi
 
-for tool in update-mime-database update-desktop-database xdg-mime; do
-    command -v "$tool" >/dev/null || fail "missing tool: $tool"
-done
+command -v xdg-mime >/dev/null || fail 'missing tool: xdg-mime'
 sha=$(gh run view "$run" -R "$repo" --json headSha,headBranch,conclusion \
     --jq 'select(.headBranch == "main" and .conclusion == "success") | .headSha')
 [[ $sha =~ ^[0-9a-f]{40}$ ]] || fail 'expected a successful main workflow'
