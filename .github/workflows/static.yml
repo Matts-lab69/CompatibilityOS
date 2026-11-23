@@ -17,3 +17,4 @@ jobs:
           git ls-files -z '*.sh' 'runner/cpos-run' 'scripts/migrate-recipes' | xargs -0 -r shellcheck -x
           bash 'tests/check-series.sh'
           bash 'tests/check-recipes.sh'
+          bash 'installer/install.sh' --dry-run install 1

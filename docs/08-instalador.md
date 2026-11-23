@@ -8,4 +8,6 @@
 
 **HYPOTHESIS — runtime fallback.** The installer only reports availability; the runner prefers usable ntsync, then fsync, then esync if the selected build and environment support each backend. Otherwise use wineserver synchronization. Record the actual backend; do not compare benchmarks across backends.
 
-**NOT ANALYZED.** fsync/esync support or automatic fallback in the eventual GE/CachyOS patch combination; distribution-specific registration and binary portability. No installer or workflow is implemented.
+**HIPÓTESIS — implementation.** `installer/install.sh` selects an explicit successful Actions run from `main`, verifies GitHub artifact attestations for both files and checks SHA-256 before extraction. It installs under the user's XDG paths, and restores an untouched MIME defaults file on uninstall. If the file has since changed it is left alone; owned MIME/desktop files are removed only if unchanged. Per-app data and registry are retained.
+
+**SIN ANALIZAR.** Signature verification, COSMIC association behavior and binary portability on Gentoo/OpenRC. The installer does not modify the kernel.
