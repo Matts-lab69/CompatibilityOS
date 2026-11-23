@@ -123,14 +123,25 @@ if (check_windows_writes); then printf 'ok windows-writes\n'; else report window
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
 fusion_dll="$CPOS_BUNDLE/wine/lib/wine/x86_64-windows/fusion.dll"
 font_file='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+font_config="$PWD/private-fonts.conf"
+mkdir -- 'empty-fonts' 'fontconfig-cache'
+cat > "$font_config" <<'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir prefix="relative">empty-fonts</dir>
+  <cachedir prefix="relative">fontconfig-cache</cachedir>
+</fontconfig>
+EOF
 if [[ ! -f $fusion_dll ]]; then
     printf 'Packaged Fusion DLL missing: %s\n' "$fusion_dll" >&2
     report subsystem-probes
 elif [[ ! -f $font_file ]]; then
     printf 'Missing CI font: %s\n' "$font_file" >&2
     report subsystem-probes
-elif CPOS_TEST_FUSION_DLL="\\\\?\\unix${fusion_dll//\//\\}" \
-    CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" app "$PWD/subsystems.exe"; then
+elif FONTCONFIG_FILE="$font_config" CPOS_TEST_FUSION_DLL="\\\\?\\unix${fusion_dll//\//\\}" \
+    CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" \
+    timeout 90 "$runner" --app 'subsystem-probes' -- "$PWD/subsystems.exe"; then
     printf 'ok subsystem-probes\n'
 else
     report subsystem-probes

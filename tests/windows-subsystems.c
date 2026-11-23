@@ -11,6 +11,20 @@
 
 static int CALLBACK font_callback(const LOGFONTW *, const TEXTMETRICW *, DWORD, LPARAM);
 
+static int dejavu_visible(void)
+{
+    LOGFONTW query = {0};
+    HDC dc = CreateCompatibleDC(NULL);
+    BOOL found = FALSE;
+
+    if (!dc) return -1;
+    query.lfCharSet = DEFAULT_CHARSET;
+    lstrcpyW(query.lfFaceName, L"DejaVu Sans");
+    EnumFontFamiliesExW(dc, &query, font_callback, (LPARAM)&found, 0);
+    DeleteDC(dc);
+    return found;
+}
+
 static int font_fixture(void)
 {
     typedef LSTATUS (WINAPI *reg_create_key_fn)(HKEY, LPCWSTR, DWORD, LPWSTR, DWORD,
@@ -39,6 +53,10 @@ static int font_fixture(void)
     }
     if (length >= ARRAYSIZE(source)) {
         puts("fonts: CPOS_TEST_FONT_FILE path is too long");
+        return 1;
+    }
+    if (dejavu_visible() != FALSE) {
+        puts("fonts: fixture family must be absent before loading");
         return 1;
     }
     if (swprintf(target, ARRAYSIZE(target), L"C:\\Windows\\Fonts\\CPOS-CI-%lu.ttf", GetCurrentProcessId()) < 0 ||
@@ -78,12 +96,19 @@ static int font_fixture(void)
         goto cleanup;
     }
     added = TRUE;
+    if (dejavu_visible() != TRUE) {
+        puts("fonts: fixture family is not visible after loading");
+        goto cleanup;
+    }
     puts("fonts: private fixture loaded and per-user registry entry created");
     result = 0;
 
 cleanup:
     if (added && !RemoveFontResourceExW(target, FR_PRIVATE, NULL)) {
         printf("fonts: RemoveFontResourceExW failed (%lu)\n", GetLastError());
+        result = 1;
+    } else if (added && dejavu_visible() != FALSE) {
+        puts("fonts: fixture family remains visible after removal");
         result = 1;
     }
     if (key) {
@@ -122,7 +147,11 @@ static int fonts(void)
 static int CALLBACK font_callback(const LOGFONTW *font, const TEXTMETRICW *metric,
                                   DWORD type, LPARAM data)
 {
-    (void)font; (void)metric; (void)type; (void)data;
+    (void)metric; (void)type;
+    if (data && !lstrcmpiW(font->lfFaceName, L"DejaVu Sans")) {
+        *(BOOL *)data = TRUE;
+        return 0;
+    }
     return 1;
 }
 
