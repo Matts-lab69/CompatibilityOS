@@ -14,6 +14,66 @@ static uint32_t r32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] <
 static uint64_t r64(const uint8_t *p) { return (uint64_t)r32(p) | (uint64_t)r32(p + 4) << 32; }
 static void w64(uint8_t *p, uint64_t v) { for (unsigned i = 0; i < 8; ++i) p[i] = (uint8_t)(v >> (i * 8)); }
 
+#define PE_TLS_DIRECTORY_SIZE 40u
+#define PE_TLS_CALLBACK_LIMIT 64u
+
+static int image_range(size_t image_size, uint32_t rva, size_t length)
+{
+    return rva <= image_size && length <= image_size - rva;
+}
+
+static int executable_rva(const uint8_t *opt, const struct pe_image *parsed,
+                          uint32_t rva)
+{
+    const uint8_t *sections = opt + r16(opt - 4);
+    for (uint16_t i = 0; i < parsed->section_count; ++i) {
+        const uint8_t *header = sections + (size_t)i * 40;
+        uint32_t start = parsed->sections[i].rva;
+        uint32_t span = parsed->sections[i].virtual_size > parsed->sections[i].raw_size ?
+                        parsed->sections[i].virtual_size : parsed->sections[i].raw_size;
+        if (rva >= start && rva - start < span)
+            return (r32(header + 36) & 0x20000000u) != 0;
+    }
+    return 0;
+}
+
+static int invoke_tls_callbacks(uint8_t *image, const uint8_t *metadata, const struct pe_image *parsed,
+                                const uint8_t *opt, uint32_t tls_rva,
+                                uint32_t tls_size)
+{
+    if (!tls_rva) return tls_size == 0;
+    if (tls_size < PE_TLS_DIRECTORY_SIZE ||
+        !image_range(parsed->image_size, tls_rva, tls_size)) return 0;
+
+    const uint8_t *tls = metadata + tls_rva;
+    if (r64(tls) != r64(tls + 8) || r32(tls + 32)) return 0;
+    uint64_t callbacks_va = r64(tls + 24);
+    if (!callbacks_va) return 1;
+    if (callbacks_va < parsed->image_base ||
+        callbacks_va - parsed->image_base > UINT32_MAX) return 0;
+    uint32_t callbacks_rva = (uint32_t)(callbacks_va - parsed->image_base);
+
+    uint32_t callback_count = 0;
+    for (uint32_t i = 0; i <= PE_TLS_CALLBACK_LIMIT; ++i) {
+        uint64_t slot_rva = (uint64_t)callbacks_rva + (uint64_t)i * 8;
+        if (slot_rva > UINT32_MAX || !image_range(parsed->image_size, (uint32_t)slot_rva, 8)) return 0;
+        uint64_t callback_va = r64(metadata + (uint32_t)slot_rva);
+        if (!callback_va) break;
+        if (i == PE_TLS_CALLBACK_LIMIT || callback_va < parsed->image_base ||
+            callback_va - parsed->image_base > UINT32_MAX) return 0;
+        uint32_t callback_rva = (uint32_t)(callback_va - parsed->image_base);
+        if (!image_range(parsed->image_size, callback_rva, 1) ||
+            !executable_rva(opt, parsed, callback_rva)) return 0;
+        ++callback_count;
+    }
+    for (uint32_t i = 0; i < callback_count; ++i) {
+        uint32_t callback_rva = (uint32_t)(r64(metadata + callbacks_rva + (uint64_t)i * 8) - parsed->image_base);
+        ((void (__attribute__((ms_abi)) *)(void *, uint32_t, void *))
+         (image + callback_rva))(image, 1, NULL);
+    }
+    return 1;
+}
+
 static int resolve_import(const struct pe_exec_options *o, const char *module,
                           const char *symbol, void **address)
 {
@@ -91,7 +151,8 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     uint32_t reloc_size = dir_count > 5 ? r32(opt + 112 + 44) : 0;
     uint32_t import_rva = dir_count > 1 ? r32(opt + 112 + 8) : 0;
     uint32_t tls_rva = dir_count > 9 ? r32(opt + 112 + 72) : 0;
-    if (tls_rva) goto invalid;
+    uint32_t tls_size = dir_count > 9 ? r32(opt + 112 + 76) : 0;
+    if ((!tls_rva) != (!tls_size)) goto invalid;
     intptr_t delta = (intptr_t)((uintptr_t)image - (uintptr_t)parsed.image_base);
     if (delta) {
         if (!reloc_rva || !reloc_size) goto invalid;
@@ -130,6 +191,7 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     }
     if (options->invoke_entry) {
         if (!executable_entry) goto unsupported;
+        if (!invoke_tls_callbacks(image, file_image, &parsed, opt, tls_rva, tls_size)) goto unsupported;
         ((void (__attribute__((ms_abi)) *)(void))(image + parsed.entry_rva))();
     }
     munmap(image, image_size);
