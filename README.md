@@ -1,8 +1,8 @@
 # CompatibilityOS
 
-I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or `.msi` to run or install it without invoking `wine`, managing prefixes, or using a visible launcher. I use Wine for Phase 1; I'm not building a new Windows API implementation or a microkernel.
+I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or `.msi` without invoking `wine` or managing prefixes. Phase 1 uses Wine. [Experimental Phase 2](docs/12-fase2.md) is separate from the installer and normal launcher; it is not a Wine replacement or a microkernel.
 
-**HECHO VERIFICADO:** [GitHub Actions run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built and attested Wine 11.20 for Linux x86-64. Under Xvfb, dry run, EXE startup, ephemeral socket, MSI, the Installer route in both directions, and both WoW64 registry views passed. The sync backend logged in CI was `wineserver`. No releases have been published.
+**HECHO VERIFICADO:** [GitHub Actions run 45155264148](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45155264148) built and attested Wine 11.20 for Linux x86-64. It passed 11 Xvfb checks, including desktop log capture, known folders, per-app writes and wineserver fallback. No releases have been published.
 
 ## Install and use
 
@@ -12,6 +12,8 @@ I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or
 4. Remove the bundle with `bash "installer/install.sh" uninstall`. Per-app data and registry remain. If you change MIME defaults after installation, the installer leaves your modified list alone.
 
 **SIN ANALIZAR:** installation and double-click on Gentoo/OpenRC with COSMIC, ntsync on a supported host, broad Windows app compatibility, and performance. The runner is not a security sandbox. Kernel changes, `binfmt_misc` registration, DXVK/VKD3D integration, and upstream proprietary DLL redistribution are not part of this CI artifact.
+
+The desktop launcher records output under `"${XDG_STATE_HOME:-$HOME/.local/state}/cpos"` in builds containing the [desktop diagnostics change](runner/README.md). Native ntsync and fallback to wineserver are compiled; fsync and esync are not integrated. See [implementation status](docs/13-cierre.md) for what remains unverified.
 
 I license my standalone project code under [MIT](LICENSE) and my patches to Wine under `LGPL-2.1-or-later`.
 
