@@ -15,6 +15,7 @@ printf '%s\n' "XDG_DOCUMENTS_DIR=\"\$HOME/My Documents\"" "XDG_DESKTOP_DIR=\"\$H
 cd -- "$temp/fixtures"
 x86_64-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -o 'probe64.exe'
 i686-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -o 'probe32.exe'
+x86_64-w64-mingw32-gcc "$root/tests/windows-subsystems.c" -lgdi32 -lsetupapi -lwinspool -o 'subsystems.exe'
 cp -- "$root/tests/probe.wxs" 'probe.wxs'
 wixl -o 'probe.msi' 'probe.wxs'
 runner="$CPOS_BUNDLE/bin/cpos-run"
@@ -119,5 +120,6 @@ if (check_paths); then printf 'ok paths\n'; else report paths; fi
 if (check_known_folders); then printf 'ok known-folders\n'; else report known-folders; fi
 if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
+if app "$PWD/subsystems.exe"; then printf 'ok subsystem-probes\n'; else report subsystem-probes; fi
 if (check_wow64); then printf 'ok wow64\n'; else report wow64; fi
 exit "$failed"
