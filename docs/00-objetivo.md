@@ -6,4 +6,4 @@
 
 **Out of scope.** Kernel anti-cheat, DRM, Windows drivers, rewriting Wine's low-level DLLs, a new kernel architecture, and native DirectX in Mesa. Adobe launch failures are handled manually; other unsupported applications are deferred. Phase 2 is not authorized.
 
-**Current scope.** Repository text only. No deployment, compilation, application tests, or system changes. The user's Gentoo kernel, configuration, and modules must not be changed or proposed for change.
+**Current scope.** Build and smoke-test only on hosted GitHub Actions. Do not deploy on the user's host or change its Gentoo kernel, configuration, or modules.

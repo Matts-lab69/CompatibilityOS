@@ -1,6 +1,6 @@
 # Phase 1 architecture
 
-**Design requirements — not implemented.** Linux remains monolithic and Wine is the engine. The integration changes the user experience; it is not evidence of faster graphics or broader compatibility. No divergent `ntdll`/`win32u` fork and no `umu-launcher`.
+**Design requirements and target architecture.** Linux remains monolithic and Wine is the engine. The integration changes the user experience; it is not evidence of faster graphics or broader compatibility. No divergent `ntdll`/`win32u` fork and no `umu-launcher`. The CI-tested subset is recorded in [the build notes](07-compilacion.md); the complete XDG folder map and graphics stack remain unimplemented.
 
 **HIPÓTESIS — desktop integration.** `packaging/mime/compatibilityos.desktop` hands one local file to the runner; `compatibilityos.xml` adds the EXE and MSI globs. COSMIC behavior is **SIN ANALIZAR**; no `binfmt_misc` registration is planned for this delivery.
 

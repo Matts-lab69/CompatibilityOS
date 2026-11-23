@@ -1,5 +1,5 @@
-# Installer design
+# Installer
 
-Future script: download a versioned binary release from GitHub, authenticate it with a trusted signature or verify a pinned trusted checksum, and register launch integration for the chosen target. Do not compile locally. Be idempotent, support `--dry-run` without making changes, show planned changes, preserve previous registrations, and uninstall only owned artifacts. Preserve user app data by default.
+Use `bash "installer/install.sh" [--dry-run] install RUN_ID` or `bash "installer/install.sh" [--dry-run] uninstall`. Installation requires `gh` with artifact attestation support, Bash, GNU coreutils, tar, flock, xdg-mime, update-desktop-database and update-mime-database. Runtime also requires the system libraries for the Wine bundle and a private `XDG_RUNTIME_DIR`.
 
-The installer never edits kernel settings, recompiles the kernel, or loads modules. It only checks and reports whether `/dev/ntsync` is available and accessible; documentation can point to upstream ntsync requirements for a separate already-enabled environment, not propose changing the user's Gentoo kernel. No installer or system registration exists.
+The installer writes per-user files only. It verifies both attested subjects against the signing workflow and commit, then checks the bundle's SHA-256. Uninstall preserves app data, restores the original MIME defaults file if the installer-written copy is still unchanged, and does not overwrite subsequent user edits. **SIN ANALIZAR:** end-to-end installation, restoration and portability outside the CI runner.

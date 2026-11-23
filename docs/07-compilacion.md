@@ -8,6 +8,6 @@
 2. Stage artifacts separately from the system. Verify PE32 and PE32+ artifacts and the absence of a 32-bit ELF Wine dependency in this build. Keep classic WoW64 with host multilib as a contingency, not a requirement. Validate Vulkan and audio dependencies on supported targets separately.
 3. In a memory-constrained build environment, I start with at most `-j2` and raise it only after measuring peak memory, swap pressure and headroom. I add candidate patches in small groups after the vanilla baseline.
 
-**NOT ANALYZED.** Build success, peak memory, binary portability and runtime compatibility. No compilation or tests on the user's host; no change to its kernel, configuration or modules.
+**SIN ANALIZAR.** Peak memory and binary portability beyond the hosted Ubuntu runner. No compilation or tests on the user's host; no change to its kernel, configuration or modules.
 
-**HIPÓTESIS — hosted CI.** `wine.yml` builds on Ubuntu 24.04 with new WoW64 and MinGW-w64 at `-j2` with no persistent cache. A separate Xvfb job tests the bundle; only a successful run gets attestations and an installable artifact. Retention is seven days. Ubuntu compatibility does not establish Gentoo portability.
+**HECHO VERIFICADO — hosted CI.** [Run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built on Ubuntu 24.04 with new WoW64 and MinGW-w64 at `-j2` and passed the separate Xvfb job. It logged `Attestation created for 2 subjects` and uploaded `compatibilityos-linux-x86_64`. The previous run reported `wine/cpos_runtime.h: No such file or directory`; commit `3d2914b` registered the header in Wine's build system. See [test coverage](../tests/README.md).

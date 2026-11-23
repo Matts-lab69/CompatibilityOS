@@ -13,6 +13,8 @@
 
 ## Milestones (in order)
 
+**HECHO VERIFICADO — delivery record.** [Wine CI run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built, smoke-tested and attested the bundle. The implemented routing subset is `C:\Windows\Installer`; the full XDG known-folder mapping, real COSMIC installation and the live USB baseline are not verified by this run. `fsync` and `esync` are not built from the pinned series.
+
 1. [ ] Establish the ordered patch series, verified source download, static checks and artifact exclusions.
 2. [ ] Add a bidirectional NT/Unix route table after WoW64 redirection, consistent with `User Shell Folders`; make `C:\Windows\Installer` writable per app first. Check patch applicability.
 3. [ ] Place ephemeral Wine sockets under `/run/user/<uid>/`, coordinating `loader.c`, `server.c` and `server/request.c`.

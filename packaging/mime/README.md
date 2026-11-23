@@ -1,3 +1,3 @@
 # MIME integration
 
-Plan desktop associations on COSMIC for Windows executables and MSI packages; route both to the internal runner and preserve file arguments. MSI dispatch uses the installer path, not the PE loader. Validate actual MIME resolution and existing-handler restoration later. No MIME or desktop entries are provided.
+The desktop and shared MIME templates dispatch Windows EXE/MSI files to the internal runner. The installer registers them per user. **SIN ANALIZAR:** actual COSMIC MIME resolution and restoration of existing handlers.

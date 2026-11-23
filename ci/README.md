@@ -1,3 +1,5 @@
 # CI design
 
-Future GitHub Actions builds pinned Wine sources and a rebaseable patch series, stages target-specific binaries, and publishes versioned artifacts with checksums, signatures and required source/notices. Verify build options and runtime dependencies on supported targets before publication. Pin actions and inputs, limit build concurrency by observed memory, and separate release publication from validation. No workflows, builds or publishes are configured.
+[`wine.yml`](../.github/workflows/wine.yml) builds the pinned Wine source and ordered series with new WoW64 at `-j2`, runs tests under Xvfb, and uploads a seven-day artifact only after testing and attestation. There is no persistent build cache or release step. The bundle includes upstream source, our patch series, and license notices.
+
+**HECHO VERIFICADO:** [run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built, tested and attested the bundle. See [test coverage](../tests/README.md) for limits.

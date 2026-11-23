@@ -10,3 +10,5 @@
 **Resource guard.** I do not compile Wine on my reference machine. In an authorized build environment with limited memory, I start with at most two parallel jobs and raise the cap only after observing peak memory, swap pressure and headroom. I set CI concurrency per runner rather than inheriting the visible CPU count.
 
 **HYPOTHESIS.** Recipes may improve crash rate; tracing may locate bottlenecks. Neither is a result. No improvement claim without paired measurements and an agreed threshold. No deadline commitment before baseline evidence.
+
+**USB baseline checklist.** Use a live Linux image that already exposes an accessible `/dev/ntsync`, a writable external results location, and paired builds (unmodified Wine at the same pin and CompatibilityOS). Verify both builds use the same effective backend, GPU driver, display mode, app versions and workload on the same machine; agree on repetitions and acceptance thresholds first. A CI smoke pass is not a performance baseline.

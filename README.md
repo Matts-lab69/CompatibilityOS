@@ -2,11 +2,20 @@
 
 I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or `.msi` to run or install it without invoking `wine`, managing prefixes, or using a visible launcher. I use Wine for Phase 1; I'm not building a new Windows API implementation or a microkernel.
 
-**Status: documentation only.** I haven't published binaries, CI workflows, installers, patches, registrations, or runnable tests. I'm targeting Gentoo/OpenRC with COSMIC first and plan to offer installation from GitHub. I'm aiming for under three months for Phase 1, but won't commit to a date without measurements.
+**HECHO VERIFICADO:** [GitHub Actions run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built and attested Wine 11.20 for Linux x86-64. Under Xvfb, dry run, EXE startup, ephemeral socket, MSI, the Installer route in both directions, and both WoW64 registry views passed. The sync backend logged in CI was `wineserver`. No releases have been published.
+
+## Install and use
+
+1. Check out the repository and choose a successful [Wine CI run](https://github.com/Matts-lab69/CompatibilityOS/actions/workflows/wine.yml) on `main` with an unexpired `compatibilityos-linux-x86_64` artifact. Artifacts expire after seven days. Use authenticated `gh` with attestation support and the XDG/MIME tools listed in the [installer guide](installer/README.md).
+2. Preview with `bash "installer/install.sh" --dry-run install RUN_ID`. Remove `--dry-run` to install after the script verifies provenance and SHA-256. No compilation or privileges are required.
+3. Open a trusted `.exe` or `.msi` through your file manager, or invoke `"${XDG_DATA_HOME:-$HOME/.local/share}/compatibilityos/current/bin/cpos-run" --app example -- "/path/to/program.exe"`. Use the same app ID for the installer and installed executable when they need to share state.
+4. Remove the bundle with `bash "installer/install.sh" uninstall`. Per-app data and registry remain. If you change MIME defaults after installation, the installer leaves your modified list alone.
+
+**SIN ANALIZAR:** installation and double-click on Gentoo/OpenRC with COSMIC, ntsync on a supported host, broad Windows app compatibility, and performance. The runner is not a security sandbox. Kernel changes, `binfmt_misc` registration, DXVK/VKD3D integration, and upstream proprietary DLL redistribution are not part of this CI artifact.
 
 I license my standalone project code under [MIT](LICENSE) and my patches to Wine under `LGPL-2.1-or-later`.
 
 - [Design, audit, and measurement documents](docs/README.md)
 - [Patch series](patches/README.md), [internal runner](runner/README.md), and [application recipes](recipes/README.md)
 - [Desktop and terminal integration](packaging/README.md), [installer](installer/README.md), and [CI](ci/README.md)
-- [Future test coverage](tests/README.md) and [licensing status](docs/06-licencias.md)
+- [Test coverage](tests/README.md) and [licensing status](docs/06-licencias.md)
