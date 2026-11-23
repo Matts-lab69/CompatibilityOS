@@ -40,6 +40,8 @@ The proposed mapping is intentionally app-scoped for writable application data w
 
 ## Open questions
 
+**HIPÓTESIS — Phase 1 patch.** `paths/0001-map-installer.patch` maps `C:\Windows\Installer` to the normalized absolute directory supplied in `CPOS_WINDOWS_INSTALLER`; without that variable Wine keeps its original lookup. Device-only names continue through `get_dos_device`. The forward lookup runs after the existing WoW64 redirect and the reverse path considers the route before generic drives at the same ancestor. This patch does not replace `User Shell Folders`: the runner must set those values consistently for user folders in a later milestone. The route is not a containment boundary.
+
 - **NOT ANALYZED:** Exact Windows known-folder behavior for every application and XDG configuration, including unset or nonstandard XDG directories.
 - **NOT ANALYZED:** Permission, symlink, case-sensitivity, and path-collision behavior for host mounts.
 - **NOT ANALYZED:** Compatibility implications of application expectations around `Program Files`, `ProgramData`, or `Z:`.

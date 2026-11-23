@@ -1,0 +1,100 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Map the per-app Windows Installer directory.
+
+diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
+index 8b87cc8..f5837b6 100644
+--- a/dlls/ntdll/unix/file.c
++++ b/dlls/ntdll/unix/file.c
+@@ -3398,6 +3398,31 @@ static NTSTATUS lookup_unix_name( int root_fd, OBJECT_ATTRIBUTES *attr, UNICODE_
+ }
+ 
+ 
++static const WCHAR cpos_installerW[] = {'C',':','\\','W','i','n','d','o','w','s','\\',
++                                        'I','n','s','t','a','l','l','e','r'};
++
++static const struct cpos_route
++{
++    const WCHAR *dos;
++    unsigned int len;
++    const char *variable;
++} cpos_routes[] =
++{
++    {cpos_installerW, ARRAY_SIZE(cpos_installerW), "CPOS_WINDOWS_INSTALLER"},
++};
++
++/* The runner supplies normalized absolute directory names without a trailing slash. */
++static const char *cpos_route_root( const struct cpos_route *route )
++{
++    const char *value = getenv( route->variable );
++    size_t len;
++
++    if (!value || value[0] != '/') return NULL;
++    len = strlen( value );
++    if (len < 2 || len >= 4096 || value[len - 1] == '/') return NULL;
++    return value;
++}
++
+ /******************************************************************************
+  *           nt_to_unix_file_name_no_root
+  */
+@@ -3430,6 +3455,26 @@ static NTSTATUS nt_to_unix_file_name_no_root( OBJECT_ATTRIBUTES *attr, UNICODE_S
+ 
+     if (!name_len) return STATUS_OBJECT_NAME_INVALID;
+ 
++    /* Match complete components after the caller has applied WoW64 redirection. */
++    for (unsigned int i = 0; i < ARRAY_SIZE(cpos_routes); ++i)
++    {
++        const struct cpos_route *route = &cpos_routes[i];
++        const char *root = cpos_route_root( route );
++        unsigned int offset = route->len;
++
++        if (!root || name_len < offset || wcsnicmp( name, route->dos, offset )) continue;
++        if (name_len > offset && name[offset++] != '\\') continue;
++        pos = strlen( root );
++        unix_len = pos + (name_len - offset) * 3 + MAX_DIR_ENTRY_LEN + 3;
++        if (!(unix_name = malloc( unix_len ))) return STATUS_NO_MEMORY;
++        memcpy( unix_name, root, pos );
++        status = lookup_unix_name( AT_FDCWD, attr, nt_name, nt_pos + offset, &unix_name,
++                                   unix_len, pos, disposition, open_reparse, FALSE, reparse_count );
++        if (status == STATUS_SUCCESS || status == STATUS_NO_SUCH_FILE) *unix_name_ret = unix_name;
++        else free( unix_name );
++        return status;
++    }
++
+     /* check for sub-directory */
+     for (pos = 0; pos < name_len && pos <= MAX_DIR_ENTRY_LEN; pos++)
+     {
+@@ -3949,6 +3994,32 @@ static NTSTATUS find_drive_nt_root( char *unix_name, unsigned int len,
+         unix_name[pos] = prev;
+         if (!S_ISDIR( st.st_mode )) continue;
+ 
++        /* Prefer the matching app route over generic drives such as Z:. */
++        for (i = 0; i < ARRAY_SIZE(cpos_routes); ++i)
++        {
++            const struct cpos_route *route = &cpos_routes[i];
++            const char *root = cpos_route_root( route );
++            unsigned int suffix = pos;
++
++            while (suffix > 1 && unix_name[suffix - 1] == '/') --suffix;
++            if (!root || strlen( root ) != suffix || memcmp( unix_name, root, suffix )) continue;
++            while (pos < len && unix_name[pos] == '/') ++pos;
++            len -= pos;
++            if (!(buffer = malloc( (4 + route->len + 1 + len + 1) * sizeof(WCHAR) )))
++                return STATUS_NO_MEMORY;
++            memcpy( buffer, dos_prefixW, 4 * sizeof(WCHAR) );
++            memcpy( buffer + 4, route->dos, route->len * sizeof(WCHAR) );
++            lenW = 4 + route->len;
++            if (len)
++            {
++                buffer[lenW++] = '\\';
++                lenW += ntdll_umbstowcs( unix_name + pos, len, buffer + lenW, len );
++            }
++            buffer[lenW] = 0;
++            *nt_name = collapse_path( buffer );
++            return status;
++        }
++
+         /* find the drive */
+         for (i = 0; i < MAX_DOS_DRIVES; i++)
+         {
