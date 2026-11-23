@@ -86,7 +86,11 @@ for route in 'TEMP:temp' 'SPOOL:spool' 'FONTS:fonts' 'ASSEMBLY:assembly' 'DOTNET
     export "CPOS_WINDOWS_${route%%:*}=$target"
 done
 unset WINEFSYNC WINEESYNC
-if [[ -c /dev/ntsync ]] && ( : < '/dev/ntsync' ) 2>/dev/null; then
+export CPOS_SYNC="${CPOS_SYNC:-auto}"
+[[ $CPOS_SYNC == auto || $CPOS_SYNC == wineserver ]] || fail 'CPOS_SYNC must be auto or wineserver'
+if [[ $CPOS_SYNC == wineserver ]]; then
+    printf 'cpos-run: using explicit wineserver fallback\n' >&2
+elif [[ -c /dev/ntsync ]] && ( : < '/dev/ntsync' ) 2>/dev/null; then
     printf 'cpos-run: /dev/ntsync accessible; wineserver reports the selected backend\n' >&2
 else
     printf 'cpos-run: /dev/ntsync unavailable; fsync/esync not built, expecting wineserver\n' >&2

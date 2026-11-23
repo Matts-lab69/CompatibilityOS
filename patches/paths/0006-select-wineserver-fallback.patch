@@ -1,0 +1,31 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Allow an explicit wineserver-only session.
+
+diff --git a/server/inproc_sync.c b/server/inproc_sync.c
+index 3ffd2f4..765391e 100644
+--- a/server/inproc_sync.c
++++ b/server/inproc_sync.c
+@@ -58,7 +58,12 @@ int get_inproc_device_fd(void)
+     static int fd = -2;
+     if (fd == -2)
+     {
+-        fd = open( "/dev/ntsync", O_CLOEXEC | O_RDONLY );
++        const char *session = getenv( "CPOS_SESSION" );
++        const char *policy = getenv( "CPOS_SYNC" );
++        if (session && !strcmp( session, "1" ) && policy && !strcmp( policy, "wineserver" ))
++            fd = -1;
++        else
++            fd = open( "/dev/ntsync", O_CLOEXEC | O_RDONLY );
+         cpos_report_sync( fd >= 0 ? "ntsync" : "wineserver" );
+     }
+     return fd;
+@@ -242,7 +247,7 @@ int get_inproc_device_fd(void)
+ {
+     static int reported;
+ 
+-    if (!reported++)
++    if (!reported)
+     {
+         cpos_report_sync( "wineserver" );
+         reported = 1;

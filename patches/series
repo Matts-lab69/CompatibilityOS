@@ -5,3 +5,4 @@ paths/0002-runtime-socket.patch
 paths/0003-quiet-prefix-update.patch
 paths/0004-report-sync-backend.patch
 paths/0005-map-windows-writes.patch
+paths/0006-select-wineserver-fallback.patch
