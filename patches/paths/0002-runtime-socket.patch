@@ -1,0 +1,120 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Keep opted-in Wine sockets in the XDG runtime directory.
+
+diff --git a/dlls/ntdll/unix/loader.c b/dlls/ntdll/unix/loader.c
+index ebfb6af..c2f8e2e 100644
+--- a/dlls/ntdll/unix/loader.c
++++ b/dlls/ntdll/unix/loader.c
+@@ -86,6 +86,7 @@
+ #include "winioctl.h"
+ #include "winternl.h"
+ #include "unix_private.h"
++#include "wine/cpos_runtime.h"
+ #include "wine/list.h"
+ #include "wine/debug.h"
+ 
+@@ -365,6 +366,11 @@ static void set_config_dir(void)
+     char *p, *dir;
+     const char *prefix = getenv( "WINEPREFIX" );
+ 
++#ifdef __linux__
++    if (cpos_session_enabled() && !cpos_runtime_dir())
++        fatal_error( "CompatibilityOS requires a private XDG_RUNTIME_DIR\n" );
++#endif
++
+     if (prefix)
+     {
+         if (prefix[0] != '/')
+diff --git a/dlls/ntdll/unix/server.c b/dlls/ntdll/unix/server.c
+index fa9138d..8803eb4 100644
+--- a/dlls/ntdll/unix/server.c
++++ b/dlls/ntdll/unix/server.c
+@@ -78,6 +78,7 @@
+ #include "wine/server.h"
+ #include "wine/debug.h"
+ #include "unix_private.h"
++#include "wine/cpos_runtime.h"
+ #include "ddk/wdm.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(server);
+@@ -1308,6 +1309,17 @@ static const char *init_server_dir( dev_t dev, ino_t ino )
+ #ifdef __ANDROID__  /* there's no /tmp dir on Android */
+     asprintf( &dir, "%s/.wineserver/server-%llx-%llx", config_dir, (unsigned long long)dev, (unsigned long long)ino );
+ #else
++# ifdef __linux__
++    if (cpos_session_enabled())
++    {
++        const char *runtime = cpos_runtime_dir();
++        if (!runtime) fatal_error( "CompatibilityOS requires a private XDG_RUNTIME_DIR\n" );
++        if (asprintf( &dir, "%s/cpos-wine/server-%llx-%llx", runtime,
++                      (unsigned long long)dev, (unsigned long long)ino ) == -1)
++            fatal_error( "out of memory\n" );
++        return dir;
++    }
++# endif
+     asprintf( &dir, "/tmp/.wine-%u/server-%llx-%llx", getuid(), (unsigned long long)dev, (unsigned long long)ino );
+ #endif
+     return dir;
+diff --git a/include/wine/cpos_runtime.h b/include/wine/cpos_runtime.h
+new file mode 100644
+index 0000000..91066ed
+--- /dev/null
++++ b/include/wine/cpos_runtime.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++#ifndef __WINE_CPOS_RUNTIME_H
++#define __WINE_CPOS_RUNTIME_H
++
++#ifdef __linux__
++static inline int cpos_session_enabled(void)
++{
++    const char *value = getenv( "CPOS_SESSION" );
++    return value && !strcmp( value, "1" );
++}
++
++static inline const char *cpos_runtime_dir(void)
++{
++    const char *path = getenv( "XDG_RUNTIME_DIR" );
++    struct stat st;
++    size_t len;
++
++    if (!path || path[0] != '/') return NULL;
++    len = strlen( path );
++    if (len < 2 || path[len - 1] == '/') return NULL;
++    if (lstat( path, &st ) || !S_ISDIR( st.st_mode ) || st.st_uid != getuid() ||
++        (st.st_mode & 0777) != 0700) return NULL;
++    return path;
++}
++#endif
++
++#endif
+diff --git a/server/request.c b/server/request.c
+index 5135ed5..4490c07 100644
+--- a/server/request.c
++++ b/server/request.c
+@@ -60,6 +60,7 @@
+ #include "security.h"
+ #include "handle.h"
+ #include "request_handlers.h"
++#include "wine/cpos_runtime.h"
+ 
+ /* Some versions of glibc don't define this */
+ #ifndef SCM_RIGHTS
+@@ -624,6 +625,16 @@ static char *create_server_dir( int force )
+     if (asprintf( &base_dir, "%s/.wineserver", config_dir ) == -1)
+         fatal_error( "out of memory\n" );
+ #else
++# ifdef __linux__
++    if (cpos_session_enabled())
++    {
++        const char *runtime = cpos_runtime_dir();
++        if (!runtime) fatal_error( "CompatibilityOS requires a private XDG_RUNTIME_DIR\n" );
++        if (asprintf( &base_dir, "%s/cpos-wine", runtime ) == -1 )
++            fatal_error( "out of memory\n" );
++    }
++    else
++# endif
+     if (asprintf( &base_dir, "/tmp/.wine-%u", getuid() ) == -1)
+         fatal_error( "out of memory\n" );
+ #endif

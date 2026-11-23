@@ -1,3 +1,4 @@
 # SPDX-License-Identifier: MIT
 # Base: scripts/wine.lock. Apply entries in order, one relative path per line.
 paths/0001-map-installer.patch
+paths/0002-runtime-socket.patch

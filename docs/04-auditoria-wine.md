@@ -16,6 +16,8 @@ This is a source audit of Wine commit [`7298a818b79446bae153b8d5aa27235ab3703bf9
 
 **HYPOTHESIS.** Supporting `XDG_RUNTIME_DIR` for server socket placement requires coordinated client and server changes; changing only one side risks mismatched runtime paths. This is a design requirement inferred from the client/server responsibilities, not a tested patch.
 
+**HIPÓTESIS — Phase 1 patch.** With `CPOS_SESSION=1`, `paths/0002-runtime-socket.patch` uses `$XDG_RUNTIME_DIR/cpos-wine/server-<dev>-<ino>` on Linux (normally under `/run/user/<uid>/`). Client and server require a private user-owned runtime directory, keep the existing device/inode key, and leave ordinary Wine launches unchanged. This is session storage, not a sandbox. Socket creation and cleanup require CI runtime evidence.
+
 ## DOS/Unix paths and known folders
 
 **VERIFIED FACT.** DOS-to-Unix translation is in [`dlls/ntdll/unix/file.c:3404–3534`](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/ntdll/unix/file.c#L3404-L3534); line 3470 calls [`get_dos_device`, defined at line 3013](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/ntdll/unix/file.c#L3013) for a device without a subpath. Reverse translation can fall back to `\??\unix` ([lines 3919–4002](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/ntdll/unix/file.c#L3919-L4002)); disabling `Z:` is not containment.
