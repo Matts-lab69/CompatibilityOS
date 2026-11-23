@@ -1,0 +1,54 @@
+SPDX-License-Identifier: LGPL-2.1-or-later
+
+Allow background prefix setup without a progress dialog.
+
+diff --git a/programs/wineboot/wineboot.c b/programs/wineboot/wineboot.c
+index 7dda9ec..bbbaf04 100644
+--- a/programs/wineboot/wineboot.c
++++ b/programs/wineboot/wineboot.c
+@@ -1676,6 +1676,7 @@ static void update_user_profile(void)
+ static void update_wineprefix( BOOL force )
+ {
+     const WCHAR *config_dir = _wgetenv( L"WINECONFIGDIR" );
++    const WCHAR *quiet_update = _wgetenv( L"CPOS_QUIET_UPDATE" );
+     WCHAR *inf_path = get_wine_inf_path();
+     int fd;
+     struct stat st;
+@@ -1701,18 +1702,25 @@ static void update_wineprefix( BOOL force )
+ 
+         if ((process = start_rundll32( inf_path, L"PreInstall", IMAGE_FILE_MACHINE_TARGET_HOST )))
+         {
+-            HWND hwnd = show_wait_window();
++            HWND hwnd = quiet_update && !wcscmp( quiet_update, L"1" ) ? NULL : show_wait_window();
+             for (;;)
+             {
+                 if (process)
+                 {
+                     MSG msg;
+-                    DWORD res = MsgWaitForMultipleObjects( 1, &process, FALSE, INFINITE, QS_ALLINPUT );
+-                    if (res != WAIT_OBJECT_0)
++                    DWORD res = hwnd ? MsgWaitForMultipleObjects( 1, &process, FALSE, INFINITE, QS_ALLINPUT )
++                                     : WaitForSingleObject( process, INFINITE );
++                    if (res == WAIT_OBJECT_0 + 1 && hwnd)
+                     {
+                         while (PeekMessageW( &msg, 0, 0, 0, PM_REMOVE )) DispatchMessageW( &msg );
+                         continue;
+                     }
++                    if (res != WAIT_OBJECT_0)
++                    {
++                        WINE_MESSAGE( "wine: failed waiting for prefix setup: %lu\n", GetLastError() );
++                        CloseHandle( process );
++                        break;
++                    }
+                     CloseHandle( process );
+                 }
+                 if (!machines[count].Machine) break;
+@@ -1722,7 +1730,7 @@ static void update_wineprefix( BOOL force )
+                     process = start_rundll32( inf_path, L"Wow64Install", machines[count].Machine );
+                 count++;
+             }
+-            DestroyWindow( hwnd );
++            if (hwnd) DestroyWindow( hwnd );
+         }
+         install_root_pnp_devices();
+         update_user_profile();

@@ -2,3 +2,4 @@
 # Base: scripts/wine.lock. Apply entries in order, one relative path per line.
 paths/0001-map-installer.patch
 paths/0002-runtime-socket.patch
+paths/0003-quiet-prefix-update.patch

@@ -47,6 +47,8 @@ This is a source audit of Wine commit [`7298a818b79446bae153b8d5aa27235ab3703bf9
 
 **HYPOTHESIS.** Suppress the startup dialog without skipping required initialization. This is proposed behavior, not a verified upstream capability or implementation.
 
+**HIPÓTESIS — Phase 1 patch.** `paths/0003-quiet-prefix-update.patch` skips only the progress window when `CPOS_QUIET_UPDATE=1`. It still waits for setup, reports wait errors and does not skip wineboot or service initialization. CI must confirm this behavior at runtime.
+
 **VERIFIED FACT — startup dependencies at `7298a818`.** `wineboot --init` and `services.exe` have fixed `C:\windows\system32` executable paths (`dlls/ntdll/unix/env.c:1541–1549`; `programs/wineboot/wineboot.c:1465–1474`). The SCM loads its service database and initializes RPC and autostart (`programs/services/services.c:1312–1323`). Skipping `wineboot` also skips its hardware and volatile registry initialization, pending renames, `KnownDLLs`, and startup processing (`programs/wineboot/wineboot.c:1924–1950`).
 
 **VERIFIED FACT — demand start at `7298a818`.** COM starts `RpcSs` through the SCM if needed (`dlls/combase/rpc.c:185–206`); its configured binary is `%11%\rpcss.exe` and its start type is demand. `PlugPlay` uses `%11%\plugplay.exe` with automatic start (`loader/wine.inf.in:977–982,1065–1070`). If there is no desktop window, `win32u` can launch `C:\windows\system32\explorer.exe /desktop` (`dlls/win32u/winstation.c:805–834,890–901`). The INF entries for Explorer are setup entries, not launch triggers (`loader/wine.inf.in:812–828`).
