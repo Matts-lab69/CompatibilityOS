@@ -10,4 +10,6 @@
 
 **SIN ANALIZAR.** Peak memory and binary portability beyond the hosted Ubuntu runner. No compilation or tests on the user's host; no change to its kernel, configuration or modules.
 
+**Decision — build-time ntsync.** Previous Ubuntu CI logged `checking for linux/ntsync.h... no`. The build now fetches and checksums only the [pinned Linux 6.18 userspace header](https://github.com/torvalds/linux/blob/7d0a66e4bb9081d75c82ec4957c50034cb0ea449/include/uapi/linux/ntsync.h), preserves its original SPDX notice and includes it with the corresponding source. It fails if Wine does not configure support. Neither this header nor the fallback test demonstrates that the runner's kernel supports ntsync.
+
 **HECHO VERIFICADO — hosted CI.** [Run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) built on Ubuntu 24.04 with new WoW64 and MinGW-w64 at `-j2` and passed the separate Xvfb job. It logged `Attestation created for 2 subjects` and uploaded `compatibilityos-linux-x86_64`. The previous run reported `wine/cpos_runtime.h: No such file or directory`; commit `3d2914b` registered the header in Wine's build system. See [test coverage](../tests/README.md).
