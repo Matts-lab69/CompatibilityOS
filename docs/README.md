@@ -18,3 +18,4 @@
 14. [Phase 2 archived research](99-fase2.md)
 15. [Implementation follow-up](13-cierre.md)
 16. [Headless subsystem probes](14-servicios.md)
+17. [Milestone status and repository footprint](13-estado.md)
