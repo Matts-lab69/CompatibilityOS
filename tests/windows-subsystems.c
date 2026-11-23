@@ -36,6 +36,10 @@ static int spool(void)
     DWORD needed = 0, returned = 0;
     BOOL ok = EnumPrintersW(PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS, NULL, 4,
                             NULL, 0, &needed, &returned);
+    if (ok && !needed && !returned) {
+        puts("spool: no printers configured");
+        return 0;
+    }
     if (ok || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
         printf("EnumPrintersW sizing: unexpected result %d, error %lu\n", ok, GetLastError());
         return 1;
