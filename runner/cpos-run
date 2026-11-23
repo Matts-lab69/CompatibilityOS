@@ -6,6 +6,26 @@ fail() { printf 'cpos-run: %s\n' "$*" >&2; exit 1; }
 dry=0
 desktop=0
 app=''
+staged=''
+
+desktop_error_notice() {
+    local status=$?
+    if [[ -n $staged ]]; then rm -rf -- "$staged" || :; fi
+    (( desktop && ! dry && status != 0 )) || return "$status"
+
+    if command -v zenity >/dev/null 2>&1; then
+        zenity --error --title='CompatibilityOS' --text='CompatibilityOS could not run the application. Check the application log for details.' >/dev/null 2>&1 && return "$status"
+    fi
+    if command -v kdialog >/dev/null 2>&1; then
+        kdialog --error 'CompatibilityOS could not run the application. Check the application log for details.' --title 'CompatibilityOS' >/dev/null 2>&1 && return "$status"
+    fi
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send --app-name=CompatibilityOS 'Application failed' 'CompatibilityOS could not run the application. Check the application log for details.' >/dev/null 2>&1 || true
+    fi
+    return "$status"
+}
+trap desktop_error_notice EXIT
+
 while (( $# )); do
     case "$1" in
         --dry-run) dry=1; shift ;;
@@ -71,7 +91,6 @@ exec 9>"$app_config/.cpos.lock"
 flock -x 9
 if [[ ! -e $prefix && ! -L $prefix ]]; then
     staged=$(mktemp -d -- "$app_config/.wine.XXXXXXXX")
-    trap 'rm -rf -- "$staged"' EXIT
     for reg in 'system.reg' 'userdef.reg' 'user.reg'; do
         [[ -f $base/$reg && ! -L $base/$reg ]] || fail "missing base registry file: $reg"
         cp --reflink=auto -- "$base/$reg" "$staged/$reg"
@@ -81,7 +100,7 @@ if [[ ! -e $prefix && ! -L $prefix ]]; then
     ln -s -- '../drive_c' "$staged/dosdevices/c:"
     printf '%s\n' "$version" > "$staged/.cpos-base"
     mv -T -- "$staged" "$prefix"
-    trap - EXIT
+    staged=''
 fi
 [[ -d $prefix && ! -L $prefix && -f $prefix/.cpos-base ]] || fail 'refusing unowned prefix'
 export WINEPREFIX="$prefix" WINESERVER="$wineserver"
@@ -167,15 +186,5 @@ if "$wineserver" -w 9>&-; then
 else
     wait_status=$?
     (( status != 0 )) || status=$wait_status
-fi
-if (( desktop && status != 0 )); then
-    message="CompatibilityOS could not run $name (exit $status). Log: $app_state/wine.log"
-    if command -v zenity >/dev/null 2>&1; then
-        zenity --error --title='CompatibilityOS' --text="$message" >/dev/null 2>&1 || true
-    elif command -v kdialog >/dev/null 2>&1; then
-        kdialog --error "$message" --title 'CompatibilityOS' >/dev/null 2>&1 || true
-    elif command -v notify-send >/dev/null 2>&1; then
-        notify-send --app-name=CompatibilityOS 'Application failed' "$message" >/dev/null 2>&1 || true
-    fi
 fi
 exit "$status"

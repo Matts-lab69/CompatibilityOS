@@ -54,7 +54,8 @@ EOF
     export CPOS_NOTIFICATION_MARKER="$marker"
     PATH="$stub:$PATH" timeout 90 "$runner" --desktop --app 'desktop-error' -- "$exe64" read || status=$?
     [[ $status == 4 && -f $marker ]] || return 1
-    grep -Fq "$XDG_STATE_HOME/cpos/desktop-error/wine.log" "$marker"
+    grep -Fq 'CompatibilityOS could not run the application.' "$marker" &&
+        [[ -s $XDG_STATE_HOME/cpos/desktop-error/wine.log ]]
 }
 check_sync_fallback() {
     CPOS_SYNC=wineserver timeout 90 "$runner" --app 'sync-fallback' -- "$exe64" &&
