@@ -12,17 +12,18 @@ staged=''
 # shellcheck disable=SC2317
 desktop_error_notice() {
     local status=$?
+    local message='CompatibilityOS could not run the application.'
     if [[ -n $staged ]]; then rm -rf -- "$staged" || :; fi
     (( desktop && ! dry && status != 0 )) || return "$status"
 
     if command -v zenity >/dev/null 2>&1; then
-        zenity --error --title='CompatibilityOS' --text='CompatibilityOS could not run the application. Check the application log for details.' >/dev/null 2>&1 && return "$status"
+        zenity --error --title='CompatibilityOS' --text="$message" >/dev/null 2>&1 && return "$status"
     fi
     if command -v kdialog >/dev/null 2>&1; then
-        kdialog --error 'CompatibilityOS could not run the application. Check the application log for details.' --title 'CompatibilityOS' >/dev/null 2>&1 && return "$status"
+        kdialog --error "$message" --title 'CompatibilityOS' >/dev/null 2>&1 && return "$status"
     fi
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send --app-name=CompatibilityOS 'Application failed' 'CompatibilityOS could not run the application. Check the application log for details.' >/dev/null 2>&1 || true
+        notify-send --app-name=CompatibilityOS 'Application failed' "$message" >/dev/null 2>&1 || true
     fi
     return "$status"
 }
