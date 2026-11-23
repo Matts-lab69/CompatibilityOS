@@ -35,7 +35,7 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -44,10 +44,51 @@ jobs:
         with:
           name: wine-ci-staging
           path: ${{ runner.temp }}/out
+      - name: Restore test package archives
+        id: test-apt
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/wine-test-debs
+          key: wine-test-apt-noble-${{ runner.arch }}-${{ hashFiles('.github/workflows/wine.yml') }}
       - name: Install test tools on the hosted runner
+        id: test-tools
+        timeout-minutes: 25
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wixl xvfb xauth xdg-user-dirs fonts-dejavu-core
+          cache="$RUNNER_TEMP/wine-test-debs"
+          archives='/var/cache/apt/archives'
+          mkdir -p -- "$cache"
+          shopt -s nullglob
+          packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs fonts-dejavu-core)
+          options=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          sudo apt-get "${options[@]}" update
+          for archive in "$cache/"*.deb; do
+            [[ -f $archive && ! -L $archive ]] || continue
+            package=$(dpkg-deb -f "$archive" Package) || continue
+            version=$(dpkg-deb -f "$archive" Version) || continue
+            [[ $package =~ ^[a-z0-9][a-z0-9+.-]+$ && $version =~ ^[0-9][a-zA-Z0-9.+:~_-]*$ ]] || continue
+            digest=$(sha256sum -- "$archive")
+            digest=${digest%% *}
+            # Match a checksum from the current authenticated APT indexes.
+            if apt-cache show "$package=$version" | grep -Fx "SHA256: $digest" >/dev/null; then
+              sudo install -m 644 -- "$archive" "$archives/"
+            fi
+          done
+          sudo apt-get "${options[@]}" install -y --no-install-recommends --download-only "${packages[@]}"
+          rm -f -- "$cache/"*.deb
+          for archive in "$archives/"*.deb; do install -m 644 -- "$archive" "$cache/"; done
+          sudo apt-get "${options[@]}" install -y --no-install-recommends "${packages[@]}"
+          bytes=$(du -sb -- "$cache" | cut -f1)
+          debs=("$cache/"*.deb)
+          if (( ${#debs[@]} > 0 && bytes <= 512 * 1024 * 1024 )); then
+            echo 'cacheable=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Save test package archives
+        if: github.ref == 'refs/heads/main' && steps.test-tools.outputs.cacheable == 'true' && steps.test-apt.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/wine-test-debs
+          key: ${{ steps.test-apt.outputs.cache-primary-key }}
       - name: Test Windows dispatch and WoW64 under Xvfb
         run: xvfb-run -a bash 'tests/wine-smoke.sh' "$RUNNER_TEMP"
   attest:

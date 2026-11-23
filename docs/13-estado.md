@@ -32,6 +32,8 @@
 
 ## Follow-up after the snapshot
 
+- **HECHO VERIFICADO:** [Wine CI run 45186778110](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186778110) built Wine, but APT exhausted the 15-minute test job before Xvfb ran. The workflow now allows 35 minutes for the job and 25 for dependency setup, configures five APT retries and per-request timeouts, installs one MinGW variant per architecture, and caches only downloaded `.deb` archives, with a 512 MiB cap per entry. Restored packages are copied into the APT archive directory only after their SHA-256 matches the authenticated indexes. **SIN ANALIZAR:** the result of the changed workflow and cache reuse until CI reports them.
+
 - **HECHO VERIFICADO:** `347967f` adds a private font-load and registry fixture. Its [static checks](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45185941391) passed; runtime evidence is pending. Printing, persistent font discovery and GAC/managed activation are not covered.
 - **HECHO VERIFICADO:** `da382a9`, `c68e077`, `4ba2b43` add early desktop errors and notifier fallback. The first two attempts failed on lint and a misplaced Wine stub, respectively; [static CI at `c69043e`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319520) passed ShellCheck, stub-based tests, desktop and MIME validation. Real COSMIC behavior remains **SIN ANALIZAR**.
 - **HECHO VERIFICADO:** `c69043e`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328): the MinGW fixture passed its entry-point assertion that the process-attach callback ran first. The job completed 4,065,316 fuzz iterations and passed messaging and ABI compile checks. Static TLS, TEB/PEB and general import loading are still absent.
