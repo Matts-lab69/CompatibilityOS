@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: MIT -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="22F60E68-C555-4A93-9F4B-1DA7CCEC28E0" Name="CompatibilityOS Probe" Language="1033" Version="1.0.0" Manufacturer="CompatibilityOS" UpgradeCode="CD58CBF8-BC41-4EFB-A910-E1B4779E42BE">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+    <Media Id="1" Cabinet="probe.cab" EmbedCab="yes" />
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLDIR" Name="CPOSProbe">
+          <Component Id="ProbeComponent" Guid="F1432E98-88EF-4581-B0DE-07DA38964819">
+            <File Id="ProbeBinary" Source="probe32.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+    <Feature Id="Probe" Level="1"><ComponentRef Id="ProbeComponent" /></Feature>
+  </Product>
+</Wix>

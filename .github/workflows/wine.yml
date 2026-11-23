@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: MIT
+name: Wine CI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install build tools on the hosted runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 \
+            bison flex pkg-config libx11-dev libxext-dev libxrandr-dev libxrender-dev libxi-dev \
+            libxfixes-dev libxcursor-dev libxinerama-dev libxcomposite-dev libfreetype-dev \
+            libvulkan-dev libpulse-dev libasound2-dev libudev-dev libusb-1.0-0-dev libfontconfig-dev xvfb xauth
+      - name: Build bundle
+        run: bash 'ci/build-wine.sh' "$RUNNER_TEMP"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wine-ci-staging
+          path: |
+            ${{ runner.temp }}/out/compatibilityos.tar.gz
+            ${{ runner.temp }}/out/SHA256SUMS
+          retention-days: 7
+          if-no-files-found: error
+  test:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: wine-ci-staging
+          path: ${{ runner.temp }}/out
+      - name: Install test tools on the hosted runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wixl xvfb xauth
+      - name: Test Windows dispatch and WoW64 under Xvfb
+        run: xvfb-run -a bash 'tests/wine-smoke.sh' "$RUNNER_TEMP"
+  attest:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: wine-ci-staging
+          path: ${{ runner.temp }}/out
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
+        with:
+          subject-path: |
+            ${{ runner.temp }}/out/compatibilityos.tar.gz
+            ${{ runner.temp }}/out/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: compatibilityos-linux-x86_64
+          path: |
+            ${{ runner.temp }}/out/compatibilityos.tar.gz
+            ${{ runner.temp }}/out/SHA256SUMS
+          retention-days: 7
+          if-no-files-found: error
