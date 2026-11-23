@@ -121,10 +121,15 @@ if (check_known_folders); then printf 'ok known-folders\n'; else report known-fo
 if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
 fusion_dll="$CPOS_BUNDLE/wine/lib/wine/x86_64-windows/fusion.dll"
+font_file='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 if [[ ! -f $fusion_dll ]]; then
     printf 'Packaged Fusion DLL missing: %s\n' "$fusion_dll" >&2
     report subsystem-probes
-elif CPOS_TEST_FUSION_DLL="\\\\?\\unix${fusion_dll//\//\\}" app "$PWD/subsystems.exe"; then
+elif [[ ! -f $font_file ]]; then
+    printf 'Missing CI font: %s\n' "$font_file" >&2
+    report subsystem-probes
+elif CPOS_TEST_FUSION_DLL="\\\\?\\unix${fusion_dll//\//\\}" \
+    CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" app "$PWD/subsystems.exe"; then
     printf 'ok subsystem-probes\n'
 else
     report subsystem-probes

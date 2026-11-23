@@ -4,10 +4,105 @@
 #include <wingdi.h>
 #include <winspool.h>
 #include <setupapi.h>
+#include <winreg.h>
 #include <stdio.h>
 #include <string.h>
+#include <wchar.h>
 
 static int CALLBACK font_callback(const LOGFONTW *, const TEXTMETRICW *, DWORD, LPARAM);
+
+static int font_fixture(void)
+{
+    typedef LSTATUS (WINAPI *reg_create_key_fn)(HKEY, LPCWSTR, DWORD, LPWSTR, DWORD,
+                                                REGSAM, const LPSECURITY_ATTRIBUTES,
+                                                PHKEY, LPDWORD);
+    typedef LSTATUS (WINAPI *reg_set_value_fn)(HKEY, LPCWSTR, DWORD, DWORD,
+                                               const BYTE *, DWORD);
+    typedef LSTATUS (WINAPI *reg_delete_value_fn)(HKEY, LPCWSTR);
+    typedef LSTATUS (WINAPI *reg_close_key_fn)(HKEY);
+    WCHAR source[1024], target[1300];
+    WCHAR value_name[64], registry_path[] = L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
+    DWORD length;
+    HMODULE advapi = NULL;
+    reg_create_key_fn reg_create_key;
+    reg_set_value_fn reg_set_value;
+    reg_delete_value_fn reg_delete_value;
+    reg_close_key_fn reg_close_key;
+    HKEY key = NULL;
+    BOOL copied = FALSE, added = FALSE, value_created = FALSE;
+    int result = 1;
+
+    length = GetEnvironmentVariableW(L"CPOS_TEST_FONT_FILE", source, ARRAYSIZE(source));
+    if (!length) {
+        puts("fonts: no optional fixture configured");
+        return 0;
+    }
+    if (length >= ARRAYSIZE(source)) {
+        puts("fonts: CPOS_TEST_FONT_FILE path is too long");
+        return 1;
+    }
+    if (swprintf(target, ARRAYSIZE(target), L"C:\\Windows\\Fonts\\CPOS-CI-%lu.ttf", GetCurrentProcessId()) < 0 ||
+        swprintf(value_name, ARRAYSIZE(value_name), L"CPOS CI Probe %lu", GetCurrentProcessId()) < 0) {
+        puts("fonts: could not construct fixture paths");
+        return 1;
+    }
+    if (!CopyFileW(source, target, TRUE)) {
+        printf("fonts: copy fixture to per-user Fonts directory failed (%lu)\n", GetLastError());
+        return 1;
+    }
+    copied = TRUE;
+
+    advapi = LoadLibraryW(L"advapi32.dll");
+    if (!advapi) { printf("fonts: load advapi32 failed (%lu)\n", GetLastError()); goto cleanup; }
+    reg_create_key = (reg_create_key_fn)GetProcAddress(advapi, "RegCreateKeyExW");
+    reg_set_value = (reg_set_value_fn)GetProcAddress(advapi, "RegSetValueExW");
+    reg_delete_value = (reg_delete_value_fn)GetProcAddress(advapi, "RegDeleteValueW");
+    reg_close_key = (reg_close_key_fn)GetProcAddress(advapi, "RegCloseKey");
+    if (!reg_create_key || !reg_set_value || !reg_delete_value || !reg_close_key) {
+        puts("fonts: required registry API unavailable");
+        goto cleanup;
+    }
+    if (reg_create_key(HKEY_CURRENT_USER, registry_path, 0, NULL, 0, KEY_SET_VALUE,
+                       NULL, &key, NULL) != ERROR_SUCCESS) {
+        puts("fonts: could not open per-user Fonts registry key");
+        goto cleanup;
+    }
+    if (reg_set_value(key, value_name, 0, REG_SZ, (const BYTE *)target,
+                      (DWORD)((wcslen(target) + 1) * sizeof(WCHAR))) != ERROR_SUCCESS) {
+        puts("fonts: could not create CI registry entry");
+        goto cleanup;
+    }
+    value_created = TRUE;
+    if (!AddFontResourceExW(target, FR_PRIVATE, NULL)) {
+        printf("fonts: AddFontResourceExW failed (%lu)\n", GetLastError());
+        goto cleanup;
+    }
+    added = TRUE;
+    puts("fonts: private fixture loaded and per-user registry entry created");
+    result = 0;
+
+cleanup:
+    if (added && !RemoveFontResourceExW(target, FR_PRIVATE, NULL)) {
+        printf("fonts: RemoveFontResourceExW failed (%lu)\n", GetLastError());
+        result = 1;
+    }
+    if (key) {
+        if (value_created && reg_delete_value(key, value_name) != ERROR_SUCCESS) {
+            puts("fonts: failed to remove CI registry entry");
+            result = 1;
+        }
+        if (reg_close_key(key) != ERROR_SUCCESS) {
+            puts("fonts: failed to close Fonts registry key");
+            result = 1;
+        }
+    }
+    if (copied && !DeleteFileW(target)) {
+        printf("fonts: failed to remove copied fixture (%lu)\n", GetLastError());
+        result = 1;
+    }
+    if (advapi) FreeLibrary(advapi);
+    return result;
+}
 
 static int fonts(void)
 {
@@ -106,6 +201,7 @@ int main(void)
     int failed = 0;
 #define RUN(name, fn) do { int result = (fn)(); printf("%s %s\n", result ? "FAIL" : "ok", name); failed |= result; } while (0)
     RUN("fonts", fonts);
+    RUN("font-fixture", font_fixture);
     RUN("spool", spool);
     RUN("plug-and-play-fixture", plug_and_play);
     RUN("fusion", fusion);

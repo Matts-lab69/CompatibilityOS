@@ -47,7 +47,7 @@ jobs:
       - name: Install test tools on the hosted runner
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wixl xvfb xauth xdg-user-dirs
+          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wixl xvfb xauth xdg-user-dirs fonts-dejavu-core
       - name: Test Windows dispatch and WoW64 under Xvfb
         run: xvfb-run -a bash 'tests/wine-smoke.sh' "$RUNNER_TEMP"
   attest:
