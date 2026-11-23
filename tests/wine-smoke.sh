@@ -4,7 +4,7 @@ set -euo pipefail
 temp=$1
 root=$(pwd -P)
 export HOME="$temp/test-home" XDG_RUNTIME_DIR="$temp/test-runtime" CPOS_BUNDLE="$temp/bundle"
-export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_STATE_HOME="$HOME/.local/state"
 export WINEDLLOVERRIDES='mscoree,mshtml='
 mkdir -p -- "$HOME" "$CPOS_BUNDLE" "$temp/fixtures"
 mkdir -m 700 -- "$XDG_RUNTIME_DIR"
@@ -25,7 +25,7 @@ msi="$PWD/probe.msi"
 app() { timeout 90 "$runner" --app 'smoke' -- "$@"; }
 check_start() { "$wine" --version && app "$exe64" && grep -E 'cpos-sync: (ntsync|wineserver)' "$XDG_CONFIG_HOME/smoke/wine.log"; }
 check_desktop_log() {
-    local output log="$XDG_CONFIG_HOME/desktop-log/wine.log"
+    local output log="$XDG_STATE_HOME/cpos/desktop-log/wine.log"
     if ! output=$(timeout 90 "$runner" --desktop --app 'desktop-log' -- "$exe64" 2>&1); then
         printf 'Desktop launch failed: %s\n' "$output" >&2
         if [[ -f $log ]]; then tail -n 30 -- "$log" >&2; fi
@@ -41,6 +41,16 @@ check_desktop_log() {
         if [[ -f $log ]]; then tail -n 30 -- "$log" >&2; fi
         return 1
     fi
+}
+check_desktop_notification() {
+    local stub="$temp/notification-stub" marker="$temp/notification-called" status=0
+    mkdir -p -- "$stub"
+    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" > "$CPOS_NOTIFICATION_MARKER"\n' > "$stub/zenity"
+    chmod +x -- "$stub/zenity"
+    export CPOS_NOTIFICATION_MARKER="$marker"
+    PATH="$stub:$PATH" timeout 90 "$runner" --desktop --app 'desktop-error' -- "$exe64" read || status=$?
+    [[ $status == 4 && -f $marker ]] || return 1
+    grep -Fq "$XDG_STATE_HOME/cpos/desktop-error/wine.log" "$marker"
 }
 check_sync_fallback() {
     CPOS_SYNC=wineserver timeout 90 "$runner" --app 'sync-fallback' -- "$exe64" &&
@@ -98,6 +108,7 @@ report() { printf 'FAIL %s\n' "$1"; failed=1; }
 if (check_dry); then printf 'ok dry\n'; else report dry; fi
 if (check_start); then printf 'ok start\n'; else report start; fi
 if (check_desktop_log); then printf 'ok desktop-log\n'; else report desktop-log; fi
+if (check_desktop_notification); then printf 'ok desktop-notification\n'; else report desktop-notification; fi
 if (check_sync_fallback); then printf 'ok sync-fallback\n'; else report sync-fallback; fi
 if (check_socket); then printf 'ok socket\n'; else report socket; fi
 if (check_msi); then printf 'ok msi\n'; else report msi; fi

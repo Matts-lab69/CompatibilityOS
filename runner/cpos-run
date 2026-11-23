@@ -32,13 +32,15 @@ fi
 
 config_home=${XDG_CONFIG_HOME:-$HOME/.config}
 data_home=${XDG_DATA_HOME:-$HOME/.local/share}
+state_home=${XDG_STATE_HOME:-$HOME/.local/state}
 runtime=${XDG_RUNTIME_DIR:-}
 bundle=${CPOS_BUNDLE:-$data_home/compatibilityos/current}
 app_config="$config_home/$app"
 app_data="$data_home/$app"
+app_state="$state_home/cpos/$app"
 prefix="$app_config/wine"
 installer="$app_data/windows-installer"
-for dir in "$config_home" "$data_home" "$bundle"; do
+for dir in "$config_home" "$data_home" "$state_home" "$bundle"; do
     [[ $dir == /* ]] || fail 'configuration and data paths must be absolute'
 done
 
@@ -61,8 +63,9 @@ read -r version < "$base/version"
 umask 077
 mkdir -p -- "$app_config" "$app_data" "$installer"
 if (( desktop )); then
-    [[ ! -L $app_config/wine.log ]] || fail 'refusing a linked desktop log'
-    exec </dev/null >>"$app_config/wine.log" 2>&1
+    mkdir -p -- "$app_state"
+    [[ ! -L $app_state/wine.log ]] || fail 'refusing a linked desktop log'
+    exec </dev/null >>"$app_state/wine.log" 2>&1
 fi
 exec 9>"$app_config/.cpos.lock"
 flock -x 9
@@ -160,9 +163,19 @@ else
     run_wine "$file" "$@" || status=$?
 fi
 if "$wineserver" -w 9>&-; then
-    exit "$status"
+    :
 else
     wait_status=$?
     (( status != 0 )) || status=$wait_status
+fi
+if (( desktop && status != 0 )); then
+    message="CompatibilityOS could not run $name (exit $status). Log: $app_state/wine.log"
+    if command -v zenity >/dev/null 2>&1; then
+        zenity --error --title='CompatibilityOS' --text="$message" >/dev/null 2>&1 || true
+    elif command -v kdialog >/dev/null 2>&1; then
+        kdialog --error "$message" --title 'CompatibilityOS' >/dev/null 2>&1 || true
+    elif command -v notify-send >/dev/null 2>&1; then
+        notify-send --app-name=CompatibilityOS 'Application failed' "$message" >/dev/null 2>&1 || true
+    fi
 fi
 exit "$status"
