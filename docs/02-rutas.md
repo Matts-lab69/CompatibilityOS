@@ -12,7 +12,7 @@ The source references below are pinned to Wine commit [`7298a818b79446bae153b8d5
 
 | Windows-visible path | Host mapping (proposal) | Status / notes |
 | --- | --- | --- |
-| `C:\Windows` | Shared immutable base, with explicit writable subpaths backed by persistent per-app storage | **HYPOTHESIS.** Start with `C:\Windows\Installer`; the rest of the write inventory is pending. |
+| `C:\Windows` | Windows system tree with explicit writable subpaths in persistent per-app storage | **HIPÓTESIS:** Installer, Temp, spool, Fonts, assembly roots and WinSxS have explicit routes; the full write inventory is not established. |
 | `C:\Program Files\<app>` | Per-app writable subtree under `~/.local/share/<app>/` | **HYPOTHESIS.** Include both native and x86 program directories in the per-app layout; preserve the Windows-visible distinction. |
 | `C:\Program Files (x86)\<app>` | Per-app writable subtree under `~/.local/share/<app>/` | **HYPOTHESIS.** Do not collapse the Windows-visible x86 path into a different app identity. |
 | `C:\ProgramData\<app>` | Per-app writable subtree under `~/.local/share/<app>/` | **HYPOTHESIS.** Separate app data from the immutable base. |
@@ -34,7 +34,7 @@ The proposed mapping is intentionally app-scoped for writable application data w
 
 ## Reversibility and user access
 
-**HIPÓTESIS — XDG folders.** When `xdg-user-dir` is installed, the runner resolves Documents, Desktop and Downloads from the user's configuration, maps them through Wine's native DOS-device path table (`W:`, `X:`, `Y:`), and records both modern GUID and applicable legacy names in `User Shell Folders`. It does not create host directories. An absent resolver leaves Wine defaults; an explicit root mapping or an existing conflicting drive is rejected. When multiple folders resolve to one host directory, a reverse DOS lookup can select any matching alias. This exposes the configured folders to the app; it is not containment.
+**HIPÓTESIS — XDG folders.** When `xdg-user-dir` is installed, the runner resolves Documents, Desktop and Downloads from the user's configuration, maps them through Wine's native DOS-device path table (`W:`, `X:`, `Y:`), and records both modern GUID and applicable legacy names in `User Shell Folders`. It does not create host directories. An absent resolver leaves defaults; an unavailable target is logged without changing existing mapping. An explicit root mapping or an existing conflicting drive is rejected. When multiple folders resolve to one host directory, a reverse DOS lookup can select any matching alias. This exposes the configured folders to the app; it is not containment.
 
 **HYPOTHESIS.** Keep the mapping reversible and explicit through CLI arguments, file dialogs, and drag-and-drop (DnD). Each route should resolve to the same configured mount/path policy, and users should be able to inspect or change those mappings. Exact UX and permission semantics are not specified here.
 

@@ -121,7 +121,11 @@ if command -v xdg-user-dir >/dev/null; then
     for i in "${!drives[@]}"; do
         target=$(xdg-user-dir "${folder_names[i]}")
         [[ $target == /* ]] || fail "invalid XDG path for ${folder_names[i]}"
-        target=$(realpath -m -- "$target")
+        if [[ ! -d $target ]]; then
+            printf 'cpos-run: XDG %s directory unavailable; leaving existing mapping unchanged\n' "${folder_names[i]}" >&2
+            continue
+        fi
+        target=$(realpath -e -- "$target")
         [[ $target != / ]] || fail 'not mapping the filesystem root as a known folder'
         drive=${drives[i]}
         link="$prefix/dosdevices/$drive:"
