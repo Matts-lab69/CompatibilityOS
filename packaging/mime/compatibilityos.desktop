@@ -1,0 +1,9 @@
+[Desktop Entry]
+# SPDX-License-Identifier: MIT
+Type=Application
+Name=CompatibilityOS
+Exec=cpos-run -- %f
+TryExec=cpos-run
+NoDisplay=true
+Terminal=false
+MimeType=application/x-ms-dos-executable;application/x-msi;

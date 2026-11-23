@@ -2,6 +2,8 @@
 
 **Design requirements — not implemented.** Linux remains monolithic and Wine is the engine. The integration changes the user experience; it is not evidence of faster graphics or broader compatibility. No divergent `ntdll`/`win32u` fork and no `umu-launcher`.
 
+**HIPÓTESIS — desktop integration.** `packaging/mime/compatibilityos.desktop` hands one local file to the runner; `compatibilityos.xml` adds the EXE and MSI globs. COSMIC behavior is **SIN ANALIZAR**; no `binfmt_misc` registration is planned for this delivery.
+
 1. COSMIC dispatches `.exe` and `.msi` by MIME to the internal, non-interactive `cpos-run` (working name). Terminal integration uses `binfmt_misc` for `MZ` executables; MSI is a separate installer dispatch, not an `MZ` executable. See [packaging](../packaging/README.md).
 2. The runner resolves app identity, prepares `~/.local/share/<app>` and `~/.config/<app>`, builds the [path table](02-rutas.md), prepares the [registry](03-registro.md), and applies the app recipe. Recipes may activate legitimate high-level vendor DLLs for personal use; none are redistributed.
 3. Start wineserver automatically, with ephemeral session files under the user's `$XDG_RUNTIME_DIR` (normally `/run/user/<uid>`). Preserve background bootstrap without showing Wine's startup dialog. Shut down and clean up after the last app and its session processes finish, without removing persistent app data. See the [source audit](04-auditoria-wine.md) for the socket and boot dependencies.

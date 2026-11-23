@@ -1,3 +1,5 @@
 # Desktop and terminal integration
 
-Two future entry points for the same internal runner: [MIME](mime/README.md) for `.exe`/`.msi`, [binfmt_misc](binfmt/README.md) for `MZ` executables. No registrations are shipped or applied.
+The [MIME templates](mime/) dispatch one local `.exe` or `.msi` to `cpos-run`. The installer owns per-user registration. [binfmt_misc](binfmt/README.md) remains documentation only.
+
+**SIN ANALIZAR:** actual default-handler selection and double-click behavior in COSMIC. MIME matching is not an authenticity or safety check.

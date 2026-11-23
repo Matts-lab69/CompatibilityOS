@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: MIT -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-ms-dos-executable">
+    <comment>Windows executable</comment>
+    <glob pattern="*.exe"/>
+  </mime-type>
+  <mime-type type="application/x-msi">
+    <comment>Windows Installer package</comment>
+    <glob pattern="*.msi"/>
+  </mime-type>
+</mime-info>
