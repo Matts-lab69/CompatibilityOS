@@ -43,7 +43,7 @@ export XDG_RUNTIME_DIR="$tmp/runtime" CPOS_BUNDLE="$tmp/bundle" NOTICE_LOG="$tmp
 
 # Early validation failures notify and retain the original status.
 set +e
-XDG_RUNTIME_DIR= "$runner" --desktop --app test -- "$tmp/sample.exe" >/dev/null 2>&1
+XDG_RUNTIME_DIR='' "$runner" --desktop --app test -- "$tmp/sample.exe" >/dev/null 2>&1
 status=$?
 set -e
 [[ $status -ne 0 ]] || fail 'early error returned success'

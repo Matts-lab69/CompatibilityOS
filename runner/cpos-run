@@ -8,6 +8,8 @@ desktop=0
 app=''
 staged=''
 
+# Invoked by the EXIT trap.
+# shellcheck disable=SC2317
 desktop_error_notice() {
     local status=$?
     if [[ -n $staged ]]; then rm -rf -- "$staged" || :; fi
