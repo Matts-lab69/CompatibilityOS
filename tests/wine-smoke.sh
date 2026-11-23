@@ -9,8 +9,8 @@ export WINEDLLOVERRIDES='mscoree,mshtml='
 mkdir -p -- "$HOME" "$CPOS_BUNDLE" "$temp/fixtures"
 mkdir -m 700 -- "$XDG_RUNTIME_DIR"
 mkdir -p -- "$XDG_CONFIG_HOME" "$HOME/My Documents" "$HOME/My Desktop" "$HOME/My Downloads"
-printf '%s\n' 'XDG_DOCUMENTS_DIR="$HOME/My Documents"' 'XDG_DESKTOP_DIR="$HOME/My Desktop"' \
-    'XDG_DOWNLOAD_DIR="$HOME/My Downloads"' > "$XDG_CONFIG_HOME/user-dirs.dirs"
+printf '%s\n' "XDG_DOCUMENTS_DIR=\"\$HOME/My Documents\"" "XDG_DESKTOP_DIR=\"\$HOME/My Desktop\"" \
+    "XDG_DOWNLOAD_DIR=\"\$HOME/My Downloads\"" > "$XDG_CONFIG_HOME/user-dirs.dirs"
 (cd -- "$temp/out"; sha256sum --check 'SHA256SUMS'; tar -xzf 'compatibilityos.tar.gz' -C "$CPOS_BUNDLE")
 cd -- "$temp/fixtures"
 x86_64-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -o 'probe64.exe'
