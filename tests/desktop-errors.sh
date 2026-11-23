@@ -17,11 +17,12 @@ mkdir -p "$tmp/bin" "$tmp/runtime" "$tmp/bundle/wine/bin" "$tmp/bundle/base" "$t
 chmod 700 "$tmp/runtime"
 printf '1.0\n' > "$tmp/bundle/base/version"
 for registry in system.reg userdef.reg user.reg; do : > "$tmp/bundle/base/$registry"; done
-cat > "$tmp/bin/wine" <<'EOF'
+cat > "$tmp/bundle/wine/bin/wine" <<'EOF'
 #!/usr/bin/env bash
+case "${1:-}" in wineboot.exe|reg.exe) exit 0 ;; esac
 exit 23
 EOF
-cat > "$tmp/bin/wineserver" <<'EOF'
+cat > "$tmp/bundle/wine/bin/wineserver" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
@@ -35,7 +36,7 @@ cat > "$tmp/bin/kdialog" <<'EOF'
 printf '%s\n' "$*" >> "$NOTICE_LOG"
 exit "${KDIALOG_STATUS:-0}"
 EOF
-chmod +x "$tmp/bin/"*
+chmod +x "$tmp/bin/"* "$tmp/bundle/wine/bin/"*
 printf 'MZ\n' > "$tmp/sample.exe"
 
 export PATH="$tmp/bin:$PATH" HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/config" XDG_DATA_HOME="$tmp/data" XDG_STATE_HOME="$tmp/state"
