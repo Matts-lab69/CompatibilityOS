@@ -2,19 +2,77 @@
 /* EXPERIMENTAL: file-local token bookkeeping, not an NT object namespace. */
 #include <linux/compat.h>
 #include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/jiffies.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/refcount.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 #include <linux/uaccess.h>
+#include <linux/wait.h>
 #include "cpos_abi.h"
+
+static const struct file_operations cpos_fops;
 
 struct cpos_file {
 	struct mutex lock;
 	u64 tokens[CPOS_MAX_TOKENS];
 	u32 count;
 	u64 next_token;
+	struct cpos_object *objects[CPOS_MAX_OBJECTS];
+	u32 object_count;
+	u64 next_handle;
+	kuid_t owner;
 };
+
+struct cpos_object {
+	refcount_t refs;
+	spinlock_t lock;
+	wait_queue_head_t waiters;
+	u32 type;
+	u32 count;
+	u32 maximum;
+	u64 handle;
+	bool signaled;
+	bool removed;
+	struct task_struct *owner;
+	struct file *fd_file;
+};
+
+static bool cpos_reserved_zero(const u64 reserved[2]);
+
+#define CPOS_MAX_WAIT_MS (24U * 60U * 60U * 1000U)
+
+static void cpos_object_put(struct cpos_object *obj)
+{
+	if (!refcount_dec_and_test(&obj->refs))
+		return;
+	if (obj->owner)
+		put_task_struct(obj->owner);
+	if (obj->fd_file)
+		fput(obj->fd_file);
+	kfree(obj);
+}
+
+static struct cpos_object *cpos_object_find_get(struct cpos_file *ctx, u64 handle)
+{
+	struct cpos_object *obj = NULL;
+	u32 i;
+
+	mutex_lock(&ctx->lock);
+	for (i = 0; i < CPOS_MAX_OBJECTS; i++) {
+		if (ctx->objects[i] && ctx->objects[i]->handle == handle) {
+			obj = ctx->objects[i];
+			refcount_inc(&obj->refs);
+			break;
+		}
+	}
+	mutex_unlock(&ctx->lock);
+	return obj;
+}
 
 static int cpos_open(struct inode *inode, struct file *file)
 {
@@ -25,14 +83,246 @@ static int cpos_open(struct inode *inode, struct file *file)
 		return -ENOMEM;
 	mutex_init(&ctx->lock);
 	ctx->next_token = 1;
+	ctx->next_handle = 1;
+	ctx->owner = current_fsuid();
 	file->private_data = ctx;
 	return 0;
 }
 
 static int cpos_release(struct inode *inode, struct file *file)
 {
-	kfree(file->private_data);
+	struct cpos_file *ctx = file->private_data;
+	u32 i;
+
+	for (i = 0; i < CPOS_MAX_OBJECTS; i++)
+		if (ctx->objects[i])
+			cpos_object_put(ctx->objects[i]);
+	kfree(ctx);
 	return 0;
+}
+
+static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
+			      void __user *user)
+{
+	struct cpos_object *obj;
+	u32 i;
+
+	if (!uid_eq(current_fsuid(), ctx->owner))
+		return -EACCES;
+	if (cmd == CPOS_IOC_OBJECT_CREATE) {
+		struct cpos_object_request req;
+		struct file *fd_file = NULL;
+
+		if (copy_from_user(&req, user, sizeof(req)))
+			return -EFAULT;
+		if (req.size != sizeof(req) || !cpos_reserved_zero(req.reserved) ||
+		    req.handle || req.type < CPOS_OBJECT_EVENT || req.type > CPOS_OBJECT_FD_REF)
+			return -EINVAL;
+		if (req.type == CPOS_OBJECT_EVENT && (req.maximum_value || req.initial_value > 1))
+			return -EINVAL;
+		if (req.type == CPOS_OBJECT_MUTEX && (req.maximum_value || req.initial_value))
+			return -EINVAL;
+		if (req.type == CPOS_OBJECT_SEMAPHORE &&
+		    (!req.maximum_value || req.initial_value > req.maximum_value))
+			return -EINVAL;
+		if (req.type == CPOS_OBJECT_FD_REF) {
+			if (req.maximum_value || req.initial_value > INT_MAX)
+				return -EINVAL;
+			fd_file = fget((int)req.initial_value);
+			if (!fd_file)
+				return -EBADF;
+			if (fd_file->f_op == &cpos_fops) {
+				fput(fd_file);
+				return -ELOOP;
+			}
+		}
+		obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+		if (!obj) {
+			if (fd_file)
+				fput(fd_file);
+			return -ENOMEM;
+		}
+		refcount_set(&obj->refs, 1);
+		spin_lock_init(&obj->lock);
+		init_waitqueue_head(&obj->waiters);
+		obj->type = req.type;
+		obj->count = req.initial_value;
+		obj->maximum = req.maximum_value;
+		obj->handle = req.handle;
+		obj->signaled = req.initial_value != 0;
+		obj->fd_file = fd_file;
+		mutex_lock(&ctx->lock);
+		if (ctx->object_count == CPOS_MAX_OBJECTS || !ctx->next_handle) {
+			mutex_unlock(&ctx->lock);
+			cpos_object_put(obj);
+			return -ENOSPC;
+		}
+		req.handle = ctx->next_handle++;
+		obj->handle = req.handle;
+		for (i = 0; i < CPOS_MAX_OBJECTS; i++)
+			if (!ctx->objects[i])
+				break;
+		ctx->objects[i] = obj;
+		ctx->object_count++;
+		if (copy_to_user(user, &req, sizeof(req)))
+			ctx->objects[i] = NULL;
+		else {
+			mutex_unlock(&ctx->lock);
+			return 0;
+		}
+		ctx->object_count--;
+		mutex_unlock(&ctx->lock);
+		cpos_object_put(obj);
+		return -EFAULT;
+	}
+	if (cmd == CPOS_IOC_OBJECT_DROP) {
+		struct cpos_object_request req;
+
+		if (copy_from_user(&req, user, sizeof(req)))
+			return -EFAULT;
+		if (req.size != sizeof(req) || !req.handle || req.type || req.initial_value ||
+		    req.maximum_value || !cpos_reserved_zero(req.reserved))
+			return -EINVAL;
+		mutex_lock(&ctx->lock);
+		for (i = 0; i < CPOS_MAX_OBJECTS; i++)
+			if (ctx->objects[i] && ctx->objects[i]->handle == req.handle)
+				break;
+		if (i == CPOS_MAX_OBJECTS) {
+			mutex_unlock(&ctx->lock);
+			return -ENOENT;
+		}
+		obj = ctx->objects[i];
+		ctx->objects[i] = NULL;
+		ctx->object_count--;
+		spin_lock(&obj->lock);
+		obj->removed = true;
+		spin_unlock(&obj->lock);
+		mutex_unlock(&ctx->lock);
+		wake_up_all(&obj->waiters);
+		cpos_object_put(obj);
+		return 0;
+	}
+	if (cmd == CPOS_IOC_OBJECT_OP) {
+		struct cpos_object_op op;
+		long waited;
+		unsigned long flags, deadline, remaining;
+		bool ready;
+
+		if (copy_from_user(&op, user, sizeof(op)))
+			return -EFAULT;
+		if (op.size != sizeof(op) || op.reserved0 || !cpos_reserved_zero(op.reserved) ||
+		    !op.handle || op.timeout_ms > CPOS_MAX_WAIT_MS)
+			return -EINVAL;
+		obj = cpos_object_find_get(ctx, op.handle);
+		if (!obj)
+			return -ENOENT;
+		if (op.operation == CPOS_OP_FD_GET && obj->type == CPOS_OBJECT_FD_REF) {
+			int newfd = get_unused_fd_flags(O_CLOEXEC);
+
+			if (newfd < 0) {
+				cpos_object_put(obj);
+				return newfd;
+			}
+			op.timeout_ms = newfd;
+			if (copy_to_user(user, &op, sizeof(op))) {
+				put_unused_fd(newfd);
+				cpos_object_put(obj);
+				return -EFAULT;
+			}
+			get_file(obj->fd_file);
+			fd_install(newfd, obj->fd_file);
+			cpos_object_put(obj);
+			return 0;
+		}
+		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_EVENT) {
+			spin_lock_irqsave(&obj->lock, flags);
+			obj->signaled = true;
+			spin_unlock_irqrestore(&obj->lock, flags);
+			wake_up_all(&obj->waiters);
+			cpos_object_put(obj);
+			return 0;
+		}
+		if (op.operation == CPOS_OP_RELEASE && obj->type == CPOS_OBJECT_EVENT) {
+			spin_lock_irqsave(&obj->lock, flags);
+			obj->signaled = false;
+			spin_unlock_irqrestore(&obj->lock, flags);
+			cpos_object_put(obj);
+			return 0;
+		}
+		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_SEMAPHORE) {
+			spin_lock_irqsave(&obj->lock, flags);
+			if (obj->count == obj->maximum) {
+				spin_unlock_irqrestore(&obj->lock, flags);
+				cpos_object_put(obj);
+				return -EOVERFLOW;
+			}
+			obj->count++;
+			spin_unlock_irqrestore(&obj->lock, flags);
+			wake_up(&obj->waiters);
+			cpos_object_put(obj);
+			return 0;
+		}
+		if (op.operation == CPOS_OP_RELEASE && obj->type == CPOS_OBJECT_MUTEX) {
+			struct task_struct *owner;
+
+			spin_lock_irqsave(&obj->lock, flags);
+			if (obj->owner != current) {
+				spin_unlock_irqrestore(&obj->lock, flags);
+				cpos_object_put(obj);
+				return -EPERM;
+			}
+			owner = obj->owner;
+			obj->owner = NULL;
+			spin_unlock_irqrestore(&obj->lock, flags);
+			put_task_struct(owner);
+			wake_up_all(&obj->waiters);
+			cpos_object_put(obj);
+			return 0;
+		}
+		if (op.operation != CPOS_OP_WAIT ||
+		    (obj->type != CPOS_OBJECT_EVENT && obj->type != CPOS_OBJECT_MUTEX &&
+		     obj->type != CPOS_OBJECT_SEMAPHORE)) {
+			cpos_object_put(obj);
+			return -EINVAL;
+		}
+		deadline = jiffies + msecs_to_jiffies(op.timeout_ms);
+	wait_again:
+		remaining = time_before(jiffies, deadline) ? deadline - jiffies : 0;
+		waited = wait_event_interruptible_timeout(obj->waiters, ({
+			spin_lock_irqsave(&obj->lock, flags);
+			ready = obj->removed ||
+				(obj->type == CPOS_OBJECT_EVENT ? obj->signaled :
+				 obj->type == CPOS_OBJECT_MUTEX ? !obj->owner : obj->count != 0);
+			spin_unlock_irqrestore(&obj->lock, flags);
+			ready;
+		}), remaining);
+		if (waited < 0) {
+			cpos_object_put(obj);
+			return waited;
+		}
+		spin_lock_irqsave(&obj->lock, flags);
+		ready = !obj->removed && (obj->type == CPOS_OBJECT_EVENT ? obj->signaled :
+			obj->type == CPOS_OBJECT_MUTEX ? !obj->owner : obj->count != 0);
+		if (obj->removed) {
+			spin_unlock_irqrestore(&obj->lock, flags);
+			cpos_object_put(obj);
+			return -EIDRM;
+		}
+		if (ready) {
+			if (obj->type == CPOS_OBJECT_MUTEX) {
+				obj->owner = current;
+				get_task_struct(current);
+			} else if (obj->type == CPOS_OBJECT_SEMAPHORE) {
+				obj->count--;
+			}
+		}
+		spin_unlock_irqrestore(&obj->lock, flags);
+		if (!ready && waited > 0)
+			goto wait_again;
+		cpos_object_put(obj);
+		return ready ? 0 : -ETIMEDOUT;
+	}
+	return -ENOTTY;
 }
 
 static bool cpos_reserved_zero(const u64 reserved[2])
@@ -44,6 +334,13 @@ static long cpos_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct cpos_file *ctx = file->private_data;
 	void __user *user = (void __user *)arg;
+	long ret;
+
+	if (cmd == CPOS_IOC_OBJECT_CREATE || cmd == CPOS_IOC_OBJECT_DROP ||
+	    cmd == CPOS_IOC_OBJECT_OP) {
+		ret = cpos_object_ioctl(ctx, cmd, user);
+		return ret;
+	}
 
 	if (cmd == CPOS_IOC_QUERY) {
 		struct cpos_abi_info info;

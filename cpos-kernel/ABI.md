@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Experimental `/dev/compat` ABI (version 1)
 
-This out-of-tree GPL-2.0-only module is a bookkeeping skeleton. Building it does
+This out-of-tree GPL-2.0-only module provides experimental file-local objects. Building it does
 not load or install it. No project component currently uses this interface.
 Device access is mode `0600`; every open receives an independent token table,
 freed on close. There is no global namespace, sharing, or cross-open access.
@@ -40,8 +40,61 @@ struct cpos_token_request {
 };
 ```
 
-No cross-user objects, handle semantics, access masks, or signaling are
-implemented. This ABI is experimental and may change before any deployment.
+V1 tokens remain bookkeeping identifiers only; they do not implement
+cross-open handles or access masks. The v2 ioctl commands below are implemented
+as experimental per-open objects by the current kernel module. Unknown ioctl
+commands still return `ENOTTY`.
+
+## Experimental v2 objects
+
+V1 commands and layouts above remain unchanged; `CPOS_IOC_QUERY` continues to
+report version 1 for compatibility. Commands `0x10` to `0x12` implement the
+experimental v2 payloads. `cpos_object_request` and `cpos_object_op` are each
+40 bytes; canonical layouts and assertions are in `cpos_abi.h` and
+`abi_layout.c`. All objects are capped at 256 per open; handles are opaque,
+monotonically allocated 64-bit values and are not kernel addresses.
+
+`CPOS_IOC_OBJECT_CREATE` takes `size=40`, `handle=0`, zero reserved words, a
+type, and type-specific initial/max values. Event uses initial 0 or 1 and max
+0; it is manual-reset/latched (`SIGNAL` sets, `RELEASE` resets). Mutex uses
+initial 0 and max 0; successful wait acquires it and only the owning Linux task
+may `RELEASE` it. Semaphore requires max > 0 and initial <= max; `SIGNAL`
+increments and wait decrements. FD_REF uses `initial_value` as a nonnegative
+Linux fd and max 0; creation pins it with `fget()`. Any file whose operations
+are `/dev/compat` operations is rejected with `ELOOP`, preventing direct,
+indirect, and self-referential CPOS fd-reference cycles. `CPOS_IOC_OBJECT_OP` uses
+`handle` and operation; `WAIT` accepts timeout milliseconds (zero polls, max
+24 hours), interrupted waits return `EINTR`, timed-out waits `ETIMEDOUT`, and a
+waiter whose object is dropped returns `EIDRM`. `SIGNAL` applies to event and
+semaphore; `RELEASE` resets events or releases an owned mutex. `FD_GET` on an
+FD_REF installs a new close-on-exec descriptor and returns it in
+`timeout_ms`. Dropping or closing the owning `/dev/compat` open releases its
+object reference; fd refs use `fput()` exactly once when the object is finally
+destroyed. A descriptor already returned by FD_GET remains independently valid.
+
+Each open captures its filesystem UID; v2 ioctl calls from a different
+filesystem UID fail `EACCES`. This blocks access after credential changes but
+does not distinguish processes sharing the same UID and is not a named/global
+namespace. Device mode `0600` remains an additional access restriction. Object
+table operations use a per-open mutex; blocking waits release it before sleep,
+use wait queues and a state spinlock, and hold an object reference across the
+wait. Mutex ownership is task-based and is not robust: task exit while holding
+the mutex does not auto-release it, and there is no deadlock detection or
+priority inheritance. Objects cannot be shared across independent opens or
+user namespaces; there is no global naming or cross-user sharing.
+
+The present namespace is per-open-file, which is stricter than per-user
+isolation and prevents sharing even between two opens by the same user. There
+is no global named namespace, cross-process sharing, or user-namespace mapping;
+adding one requires explicit ownership checks and lifetime rules. The
+`/dev/compat` mode `0600` is an additional device-access restriction, not a
+substitute for object authorization. Any enabled wait implementation must use
+kernel wait queues with interruptible/time-bounded waits and must not sleep
+while holding the per-file table mutex. Kernel mutex objects require defined
+owner/deadlock semantics; mapping them to binary semaphores is not equivalent
+to an ownership-tracking mutex.
+
+This ABI is experimental and may change before any deployment.
 An incompatible layout or command change requires a new ABI version and ioctl
 number rather than silently reinterpreting a v1 request. CI compiles the
 layout assertions as ordinary userspace C without opening the device.
