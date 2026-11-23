@@ -11,5 +11,6 @@
 7. [Licenses and provenance](06-licencias.md)
 8. [Gentoo Wine build plan](07-compilacion.md)
 9. [Installer and release design](08-instalador.md)
-10. [Phase 1 development plan](10-plan-desarrollo.md)
-11. [Phase 2: deferred](99-fase2.md)
+10. [External references](09-referencias.md)
+11. [Phase 1 development plan](10-plan-desarrollo.md)
+12. [Phase 2: deferred](99-fase2.md)
