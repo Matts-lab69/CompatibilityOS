@@ -45,7 +45,10 @@ check_desktop_log() {
 check_desktop_notification() {
     local stub="$temp/notification-stub" marker="$temp/notification-called" status=0
     mkdir -p -- "$stub"
-    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" > "$CPOS_NOTIFICATION_MARKER"\n' > "$stub/zenity"
+    cat > "$stub/zenity" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "$CPOS_NOTIFICATION_MARKER"
+EOF
     chmod +x -- "$stub/zenity"
     export CPOS_NOTIFICATION_MARKER="$marker"
     PATH="$stub:$PATH" timeout 90 "$runner" --desktop --app 'desktop-error' -- "$exe64" read || status=$?
