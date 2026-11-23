@@ -13,4 +13,5 @@
 9. [Installer and release design](08-instalador.md)
 10. [External references](09-referencias.md)
 11. [Phase 1 development plan](10-plan-desarrollo.md)
-12. [Phase 2: deferred](99-fase2.md)
+12. [Live USB baseline](11-linea-base.md)
+13. [Phase 2: deferred](99-fase2.md)

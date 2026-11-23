@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: MIT
+profile,app,version,scenario,build,sync,mode,run,started,crashes,hang,double_click,startup_ms,fps_mean,fps_min,peak_pss_mib,server_requests
