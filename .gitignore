@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+/.opencode/
+/.cache/
+/artifacts/
+/build/
+/dist/
+/stage/
+/wine/
+*.tar
+*.tar.*
+*.zip
+*.exe
+*.msi
+*.dll
+*.so
+*.o

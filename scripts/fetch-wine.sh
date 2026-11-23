@@ -21,13 +21,13 @@ if [[ -z $destination || -e $destination || -L $destination ]]; then
 fi
 
 git -c core.hooksPath=/dev/null -c fetch.fsckObjects=true clone \
-    --no-checkout --no-tags --depth=1 --revision="$commit" -- \
+    --no-checkout --no-tags --depth=1 --filter=blob:none --revision="$commit" -- \
     'https://github.com/wine-mirror/wine.git' "$destination"
 actual=$(git -C "$destination" rev-parse --verify 'HEAD^{commit}')
 if [[ $actual != "$commit" ]]; then
     printf 'Wine commit mismatch: expected %s, got %s\n' "$commit" "$actual" >&2
     exit 1
 fi
-git -C "$destination" fsck --full --no-dangling
 git -C "$destination" -c core.hooksPath=/dev/null checkout --detach "$commit"
+git -C "$destination" fsck --full --no-dangling
 printf 'Verified Wine commit: %s\n' "$commit"
