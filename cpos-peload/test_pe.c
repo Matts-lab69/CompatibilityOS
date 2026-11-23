@@ -41,6 +41,24 @@ int main(int argc, char **argv)
     uint8_t bytes[1024]; struct pe_image im; make_pe(bytes);
     make_tables(bytes);
     assert(pe_parse(bytes, sizeof(bytes), &im) == PE_OK);
+#ifdef CPOS_TEST_EXEC
+    if (argc == 3 && !strcmp(argv[1], "--execute-fixture")) {
+        uint8_t fixture[65536];
+        FILE *in = fopen(argv[2], "rb");
+        if (!in) return 1;
+        size_t n = fread(fixture, 1, sizeof(fixture), in);
+        int failed = ferror(in) || !feof(in);
+        if (fclose(in) || failed) return 1;
+        const struct pe_exec_options options = {NULL, 0, 1};
+        enum pe_status status = pe_execute_fixture(fixture, n, &options);
+        printf("MinGW fixture entry: %d\n", status);
+        return status != PE_OK;
+    }
+    void (*fixture_import)(void) = (void (*)(void))main;
+    struct pe_import allowed = { "fixture.dll", "Fixture", (void *)fixture_import };
+    struct pe_exec_options exec_options = { &allowed, 1, 0 };
+    assert(pe_execute_fixture(bytes, sizeof(bytes), &exec_options) == PE_OK);
+#endif
     if (argc == 2) {
         FILE *out = fopen(argv[1], "wb");
         if (!out) return 1;

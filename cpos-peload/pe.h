@@ -19,4 +19,19 @@ enum pe_status pe_stage(const uint8_t *data, size_t size,
                         const struct pe_image *image, uint8_t **staging,
                         size_t *staging_size);
 void pe_stage_free(uint8_t *staging, size_t size);
+
+/* Experimental fixture-only execution API. Import names are exact, caller-owned
+ * allowlist entries; addresses are never looked up in the host process. */
+struct pe_import {
+    const char *module;
+    const char *symbol;
+    void *address;
+};
+struct pe_exec_options {
+    const struct pe_import *imports;
+    size_t import_count;
+    int invoke_entry;
+};
+enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
+                                 const struct pe_exec_options *options);
 #endif

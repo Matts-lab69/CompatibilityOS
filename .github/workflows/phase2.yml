@@ -10,15 +10,26 @@ permissions:
 jobs:
   peload:
     runs-on: ubuntu-24.04
+    container: ubuntu:24.04
     timeout-minutes: 10
     steps:
+      - name: Install fixture build tools in CI
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git build-essential clang libclang-rt-dev gcc-mingw-w64-x86-64
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - name: Compile, unit test and fuzz the non-executable PE staging loader
         run: |
           make -C 'cpos-peload' CC=clang check
+          make -C 'cpos-peload' CC=clang check-exec
           make -C 'cpos-peload' CC=clang fuzz
+      - name: Check synchronous thread messaging
+        run: |
+          clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread \
+            'cpos-peload/message.c' 'cpos-peload/test_message.c' -o "$RUNNER_TEMP/test-message"
+          timeout 15 "$RUNNER_TEMP/test-message"
   kernel:
     runs-on: ubuntu-24.04
     container: ubuntu:24.04
