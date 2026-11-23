@@ -14,4 +14,5 @@
 10. [External references](09-referencias.md)
 11. [Phase 1 development plan](10-plan-desarrollo.md)
 12. [Live USB baseline](11-linea-base.md)
-13. [Phase 2: deferred](99-fase2.md)
+13. [Phase 2 experimental design](12-fase2.md)
+14. [Phase 2 archived research](99-fase2.md)

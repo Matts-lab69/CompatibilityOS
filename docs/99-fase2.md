@@ -1,6 +1,6 @@
-# Phase 2 — DEFERRED; DO NOT START
+# Phase 2 — archived research notes
 
-No implementation, inventory, experiments, DKMS registration, or changes to the user's host are authorized. Linux remains monolithic. Revisit the project scope only after explicit authorization; the notes below do not establish feasibility or benefit.
+These notes predate the [authorized experimental design](12-fase2.md). No local module loading, installation, DKMS registration, or changes to the user's host are authorized. Linux remains monolithic; the notes below do not establish feasibility or benefit.
 
 **VERIFIED FACT — starting references only.** In Wine 11.20, [`server/protocol.def:1127–1174`](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/server/protocol.def#L1127-L1174) defines process and thread requests; [`dlls/ntdll/unix/server.c:743`](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/ntdll/unix/server.c#L743) gives a `SERVER_START_REQ` call-site example. A future inventory would map `server/protocol.def` to `SERVER_START_REQ` call sites under `dlls/ntdll/unix` before considering any replacement.
 
