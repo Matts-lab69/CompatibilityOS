@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+name: Experimental Phase 2
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/phase2.yml', 'cpos-peload/**', 'cpos-kernel/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  peload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compile, unit test and fuzz the non-executable PE staging loader
+        run: |
+          make -C 'cpos-peload' CC=clang check
+          make -C 'cpos-peload' CC=clang fuzz
