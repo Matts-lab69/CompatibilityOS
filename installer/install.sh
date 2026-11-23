@@ -93,7 +93,7 @@ exe="$root/current/bin/cpos-run"
 exe=${exe//\\/\\\\}; exe=${exe//\"/\\\"}; exe=${exe//\$/\\\$}; exe=${exe//\`/\\\`}; exe=${exe//%/%%}
 exe=${exe//\\/\\\\}
 sed -e "/^Exec=/d" -e '/^TryExec=/d' -- "$version/share/compatibilityos.desktop" > "$state/desktop"
-printf 'Exec="%s" -- %%f\n' "$exe" >> "$state/desktop"
+printf 'Exec="%s" --desktop -- %%f\n' "$exe" >> "$state/desktop"
 cp -- "$version/share/compatibilityos.xml" "$state/mime"
 install -m 644 -- "$state/desktop" "$desktop"
 install -m 644 -- "$state/mime" "$mime"

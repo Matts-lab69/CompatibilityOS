@@ -24,6 +24,11 @@ exe32="$PWD/probe32.exe"
 msi="$PWD/probe.msi"
 app() { timeout 90 "$runner" --app 'smoke' -- "$@"; }
 check_start() { "$wine" --version && app "$exe64" && grep -E 'cpos-sync: (ntsync|wineserver)' "$XDG_CONFIG_HOME/smoke/wine.log"; }
+check_desktop_log() {
+    local output
+    output=$(timeout 90 "$runner" --desktop --app 'desktop-log' -- "$exe64" 2>&1) || return
+    [[ -z $output ]] && grep -Fx 'PE64 started' "$XDG_CONFIG_HOME/desktop-log/wine.log"
+}
 check_sync_fallback() {
     CPOS_SYNC=wineserver timeout 90 "$runner" --app 'sync-fallback' -- "$exe64" &&
         grep -Fx 'cpos-sync: wineserver' "$XDG_CONFIG_HOME/sync-fallback/wine.log" &&
@@ -79,6 +84,7 @@ failed=0
 report() { printf 'FAIL %s\n' "$1"; failed=1; }
 if (check_dry); then printf 'ok dry\n'; else report dry; fi
 if (check_start); then printf 'ok start\n'; else report start; fi
+if (check_desktop_log); then printf 'ok desktop-log\n'; else report desktop-log; fi
 if (check_sync_fallback); then printf 'ok sync-fallback\n'; else report sync-fallback; fi
 if (check_socket); then printf 'ok socket\n'; else report socket; fi
 if (check_msi); then printf 'ok msi\n'; else report msi; fi

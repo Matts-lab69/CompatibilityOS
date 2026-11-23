@@ -4,10 +4,12 @@ set -euo pipefail
 
 fail() { printf 'cpos-run: %s\n' "$*" >&2; exit 1; }
 dry=0
+desktop=0
 app=''
 while (( $# )); do
     case "$1" in
         --dry-run) dry=1; shift ;;
+        --desktop) desktop=1; shift ;;
         --app) (( $# >= 2 )) || fail 'missing application ID'; app=$2; shift 2 ;;
         --) shift; break ;;
         -*) fail "unknown option: $1" ;;
@@ -58,6 +60,10 @@ read -r version < "$base/version"
 
 umask 077
 mkdir -p -- "$app_config" "$app_data" "$installer"
+if (( desktop )); then
+    [[ ! -L $app_config/wine.log ]] || fail 'refusing a linked desktop log'
+    exec </dev/null >>"$app_config/wine.log" 2>&1
+fi
 exec 9>"$app_config/.cpos.lock"
 flock -x 9
 if [[ ! -e $prefix && ! -L $prefix ]]; then
@@ -96,7 +102,10 @@ else
     printf 'cpos-run: /dev/ntsync unavailable; fsync/esync not built, expecting wineserver\n' >&2
 fi
 
-run_wine() { "$wine" "$@" 9>&- 2> >(tee -a -- "$app_config/wine.log" >&2); }
+run_wine() {
+    if (( desktop )); then "$wine" "$@" 9>&-
+    else "$wine" "$@" 9>&- 2> >(tee -a -- "$app_config/wine.log" >&2); fi
+}
 
 if [[ ! -f $prefix/.cpos-initialized ]]; then
     run_wine 'wineboot.exe' --init

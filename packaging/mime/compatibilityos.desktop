@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 Type=Application
 Name=CompatibilityOS
-Exec=cpos-run -- %f
+Exec=cpos-run --desktop -- %f
 TryExec=cpos-run
 NoDisplay=true
 Terminal=false
