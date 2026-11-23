@@ -49,8 +49,9 @@ if [[ $op == uninstall ]]; then
     exit 0
 fi
 
-command -v update-mime-database >/dev/null && command -v update-desktop-database >/dev/null &&
-    command -v xdg-mime >/dev/null || fail 'missing MIME database tools'
+for tool in update-mime-database update-desktop-database xdg-mime; do
+    command -v "$tool" >/dev/null || fail "missing tool: $tool"
+done
 sha=$(gh run view "$run" -R "$repo" --json headSha,headBranch,conclusion \
     --jq 'select(.headBranch == "main" and .conclusion == "success") | .headSha')
 [[ $sha =~ ^[0-9a-f]{40}$ ]] || fail 'expected a successful main workflow'
