@@ -31,6 +31,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends desktop-file-utils shared-mime-info xdg-utils
+          sudo apt-get -o Acquire::Retries=5 update
+          sudo apt-get -o Acquire::Retries=5 install -y --no-install-recommends desktop-file-utils shared-mime-info xdg-utils
           bash 'tests/installer-smoke.sh' "$RUNNER_TEMP" "$RUN_ID"
