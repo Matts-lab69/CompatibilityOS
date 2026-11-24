@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths: ['.github/workflows/phase2.yml', 'cpos-peload/**', 'cpos-kernel/**']
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
