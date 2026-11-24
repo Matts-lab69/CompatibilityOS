@@ -13,6 +13,10 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 **HECHO VERIFICADO:** [Phase 2 run 45147536564](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147536564) compiled the staging loader with warnings as errors, passed the unit checks and completed 5,814,076 fuzz iterations in 21 seconds with a synthetic seed. This is not a compatibility or performance benchmark.
 
+**HECHO VERIFICADO:** `2784a5d`, [run 45339764134](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45339764134), completed 10,000,000 parser fuzz iterations with the expanded synthetic corpus and passed the MinGW entry fixture. This run predates the single-slot static TLS fixture.
+
+**HECHO VERIFICADO:** `6cc0b78`, [kernel job 138263213730](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340644788/job/138263213730), passed v1/v2 layout assertions and functional ioctl tests in a disposable QEMU guest. The guest also passed FIFO, synchronous reply, owner-dispatch and close checks with the experimental event backend still enabled. The separate loader job in that run failed; this is not a green result for the whole workflow.
+
 ## Kernel boundary
 
 **HIPÓTESIS:** `/dev/compat` starts with ABI discovery and bounded per-open handle bookkeeping only. No cross-user object namespace or message queues are implemented by the skeleton. The device remains experimental and owner-only if loaded outside this project; this project does not load it. See [ABI v1](../cpos-kernel/ABI.md) for supported requests, layouts and errors. Shared NT objects and cross-process signaling require a separate review.
