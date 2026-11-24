@@ -5,4 +5,4 @@ This isolated experimental C component accepts PE32+ AMD64 images only. The pars
 
 The fixture runner supports bounded process-attach TLS callbacks, but not static TLS or TEB/PEB emulation. It does not support arbitrary PE files, OS DLLs, Linux library fallback, Windows process initialization or exception unwinding. Entrypoint code runs natively; use only project-owned synthetic fixtures in isolated CI. Do not invoke untrusted images. Unsupported platforms return `PE_UNSUPPORTED`.
 
-Run `make check` for parser synthetic inputs, `make check-exec` for the isolated allowlist/relocation mapping fixture, or `make fuzz` for a bounded libFuzzer session. Targets use AddressSanitizer and UndefinedBehaviorSanitizer; fuzzing is limited to 20 seconds by default and one MiB per input. CI is the only authorized build/test environment for this project; do not build or execute locally.
+CI runs `make check` for synthetic parser inputs, `make check-exec` for isolated execution, and `make fuzz` for at least ten million libFuzzer iterations with synthetic seeds and one MiB per input. Targets use AddressSanitizer and UndefinedBehaviorSanitizer. Do not build or execute them locally.

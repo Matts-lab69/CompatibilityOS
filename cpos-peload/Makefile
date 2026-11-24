@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 CC ?= clang
-FUZZ_SECONDS ?= 20
+FUZZ_ITERATIONS ?= 10000000
 CFLAGS ?= -O1 -g
 SANITIZERS = -fsanitize=address,undefined -fno-omit-frame-pointer
 
@@ -19,7 +19,8 @@ fuzz: check
 	$(CC) $(CFLAGS) -std=c11 -Wall -Wextra -Werror $(SANITIZERS) -fsanitize=fuzzer pe.c fuzz_pe.c -o fuzz_pe
 	mkdir -p '.corpus'
 	./test_pe '.corpus/minimal.pe'
-	./fuzz_pe -max_total_time=$(FUZZ_SECONDS) -max_len=1048576 -timeout=2 '.corpus'
+	python3 'make_corpus.py' '.corpus'
+	bash -o pipefail -c './fuzz_pe -runs=$(FUZZ_ITERATIONS) -max_len=1048576 -timeout=2 -print_final_stats=1 .corpus 2>&1 | tee .fuzz.log && grep -Ex "stat::number_of_executed_units: [1-9][0-9]{7,}" .fuzz.log'
 
 clean:
-	rm -f test_pe test_exec fuzz_pe fixture.exe
+	rm -f test_pe test_exec fuzz_pe fixture.exe .fuzz.log
