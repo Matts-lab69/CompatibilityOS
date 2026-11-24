@@ -13,7 +13,7 @@ I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or
 
 **SIN ANALIZAR:** installation and double-click on Gentoo/OpenRC with COSMIC, ntsync on a supported host, broad Windows app compatibility, and performance. The runner is not a security sandbox. Kernel changes, `binfmt_misc` registration, DXVK/VKD3D integration, and upstream proprietary DLL redistribution are not part of this CI artifact.
 
-The desktop launcher records output under `"${XDG_STATE_HOME:-$HOME/.local/state}/cpos"` in builds containing the [desktop diagnostics change](runner/README.md). Native ntsync and fallback to wineserver are compiled; fsync and esync are not integrated. See [implementation status](docs/13-cierre.md) for what remains unverified.
+The launcher records per-app diagnostics under `"${XDG_STATE_HOME:-$HOME/.local/state}/cpos"`; desktop mode does not open a terminal. Native ntsync and the wineserver fallback are compiled; fsync and esync are not integrated. See the [verification inventory](docs/13-estado.md) and the separate [EXPERIMENTAL Phase 2](docs/12-fase2.md).
 
 I license my standalone project code under [MIT](LICENSE) and my patches to Wine under `LGPL-2.1-or-later`.
 

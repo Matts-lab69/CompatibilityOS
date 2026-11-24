@@ -2,7 +2,8 @@
 # Experimental `/dev/compat` ABI (version 1)
 
 This out-of-tree GPL-2.0-only module provides experimental file-local objects. Building it does
-not load or install it. No project component currently uses this interface.
+not load or install it. The experimental userspace queue can optionally use a v2
+event; Wine, the installer and `cpos-run` do not use this interface.
 Device access is mode `0600`; every open receives an independent token table,
 freed on close. There is no global namespace, sharing, or cross-open access.
 
@@ -93,4 +94,5 @@ to an ownership-tracking mutex.
 This ABI is experimental and may change before any deployment.
 An incompatible layout or command change requires a new ABI version and ioctl
 number rather than silently reinterpreting a v1 request. CI compiles the
-layout assertions as ordinary userspace C without opening the device.
+layout assertions as ordinary userspace C and separately verifies the v1 query
+and basic v2 object behavior inside a disposable guest.

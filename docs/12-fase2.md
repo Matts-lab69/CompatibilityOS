@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Phase 2 — experimental, isolated from Phase 1
 
-Neither `cpos-run` nor the installer uses these components. CI may build an out-of-tree Linux module but never load it. No host deployment instructions are part of this phase.
+Neither Wine, `cpos-run` nor the installer uses these EXPERIMENTAL components. CI loads the out-of-tree module only inside a disposable QEMU guest, never on the runner host. No host deployment instructions are part of this phase.
 
 ## Userspace and loader
 
@@ -23,14 +23,14 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 **HECHO VERIFICADO:** [run 45147978579](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147978579) linked `cpos.ko` in the Ubuntu container and compiled the userspace ABI v1 layout assertions. Nothing loaded the module or opened the device. Earlier checkout failed because the minimal container lacked CA certificates; the corrected run installed the CA bundle without disabling TLS verification.
 
-**SIN ANALIZAR:** Windows ABI compatibility, deployment permissions, loader TLS and imports at execution time, drivers, messaging, and cross-process handle semantics. No performance claims.
+**SIN ANALIZAR:** general Windows ABI compatibility, deployment permissions, general import loading, drivers, and cross-process handle semantics. No performance claims.
 
 ## Follow-up implementation
 
-- **HIPÓTESIS:** The fixture loader attempts the PE preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, resolves explicitly allowlisted fixture imports, and invokes an executable entry point using the Microsoft x64 calling convention. This is not a sandbox: use only self-built fixtures. TLS, TEB/PEB, Windows DLL loading and process initialization are not implemented.
-- **HIPÓTESIS:** ABI v2 adds per-open events, mutexes, semaphores and bounded waits. Descriptor transfer remains disabled until LSM authorization and reference lifetime are addressed. This is not a named NT namespace, has no ntsync integration, and has not been exercised by loading the module. ABI v1 remains available.
+- **HECHO VERIFICADO:** [run 45340819917](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340819917) passed the MinGW fixture (one static TLS slot through a minimal TEB, process-attach callback, and restoration of host GS), 10,000,000 parser fuzz iterations, and the guest ioctl and messaging jobs. The loader attempts the preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, and resolves only allowlisted fixture imports. It is not a sandbox. A PEB, general DLL loading, and process/thread initialization remain absent.
+- **HECHO VERIFICADO:** ABI v2 has per-open events, mutexes, semaphores and bounded single-object waits. ABI v1 remains available. Descriptor transfer remains disabled; named per-user objects, wait-any/all, and ntsync integration are not implemented.
 - **HIPÓTESIS:** The initial synchronous queue dispatches on the owning thread and wakes queued senders on close. It uses pthread primitives, not the device; there is no cross-process dispatch, Windows message pumping or deadlock resolution for cyclic sends.
 - **HECHO VERIFICADO:** [run 45167762949](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45167762949) reported `MinGW fixture entry: 0`, passed parser unit tests and 6,155,392 fuzz iterations, and passed the queue tests for owner dispatch, synchronous reply and close. It linked `cpos.ko` and passed compile-time layout assertions for ABI v1 and v2 without loading the module or opening the device. The layout assertions do not verify runtime ioctl behavior.
 - **SIN ANALIZAR — replacing wineserver:** object namespaces and access control, process/thread lifetimes, handle inheritance/duplication, abandoned mutexes, multi-object waits and APCs, async I/O, window ownership, registry state, and compatibility with Wine's client protocol.
 
-**HECHO VERIFICADO — callback follow-up:** [CI at `c69043e`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328) passed the MinGW fixture whose entry point checks that a process-attach callback ran first. This is callback-only: the loader rejects nonempty TLS templates and does not allocate TLS slots or install a TEB.
+**HECHO VERIFICADO — historical callback-only revision:** [CI at `c69043e`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328) passed the process-attach callback fixture before static TLS was added.
