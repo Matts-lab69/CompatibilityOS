@@ -148,4 +148,16 @@ else
     report subsystem-probes
 fi
 if (check_wow64); then printf 'ok wow64\n'; else report wow64; fi
+check_gac() {
+    local fixture="$PWD/CompatibilityOS.GacFixture.dll" token identity
+    sn -k 'gac-fixture.snk' || return
+    mcs -nologo -target:library -keyfile:'gac-fixture.snk' -out:"$fixture" "$root/tests/gac-fixture.cs" || return
+    token=$(LC_ALL=C sn -T "$fixture" | sed -nE 's/^Public Key Token: ([0-9a-fA-F]{16})$/\1/p') || return
+    [[ $token =~ ^[0-9a-fA-F]{16}$ ]] || return 1
+    identity="CompatibilityOS.GacFixture, Version=1.0.0.0, Culture=neutral, PublicKeyToken=$token"
+    x86_64-w64-mingw32-gcc -municode "$root/tests/gac-probe.c" -o 'gac-probe.exe' || return
+    timeout 90 "$runner" --app 'gac-fixture' -- "$PWD/gac-probe.exe" \
+        "\\\\?\\unix${fusion_dll//\//\\}" "\\\\?\\unix${fixture//\//\\}" "$identity"
+}
+if (check_gac); then printf 'ok gac-fixture\n'; else report gac-fixture; fi
 exit "$failed"

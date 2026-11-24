@@ -60,7 +60,7 @@ jobs:
           archives='/var/cache/apt/archives'
           mkdir -p -- "$cache"
           shopt -s nullglob
-          packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs python3-fonttools)
+          packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs python3-fonttools mono-devel)
           options=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
           sudo apt-get "${options[@]}" update
           for archive in "$cache/"*.deb; do
