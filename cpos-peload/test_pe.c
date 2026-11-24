@@ -80,7 +80,10 @@ int main(int argc, char **argv)
         if (syscall(SYS_arch_prctl, ARCH_GET_GS, &restored_gs) != 0 ||
             restored_gs != original_gs) return 1;
 #endif
-        if (import_fixture) return status != PE_OK;
+        if (import_fixture) {
+            if (status != PE_OK) fprintf(stderr, "MinGW import fixture rejected: %d\n", status);
+            return status != PE_OK;
+        }
         printf("MinGW fixture entry: %d\n", status);
         return status != PE_OK;
     }
