@@ -8,6 +8,7 @@ static DWORD WINAPI probe_desktop(LPVOID parameter)
 {
     HDESK desktop = (HDESK)parameter;
     HWND window;
+    DWORD owner = 0;
 
     if (!SetThreadDesktop(desktop)) {
         fwprintf(stderr, L"SetThreadDesktop failed: %lu\n", GetLastError());
@@ -20,8 +21,9 @@ static DWORD WINAPI probe_desktop(LPVOID parameter)
         return 1;
     }
 
-    wprintf(L"Explorer probe passed: desktop=%ls HWND=%p\n",
-            FIXTURE_DESKTOP_NAME, (void *)window);
+    GetWindowThreadProcessId(window, &owner);
+    wprintf(L"Explorer desktop API: desktop=%ls HWND=%p window_pid=%lu fixture_pid=%lu\n",
+            FIXTURE_DESKTOP_NAME, (void *)window, owner, GetCurrentProcessId());
     return 0;
 }
 
@@ -66,5 +68,6 @@ done:
         fwprintf(stderr, L"CloseDesktop failed: %lu\n", GetLastError());
         result = 1;
     }
+    wprintf(L"Explorer fixture exit: %d\n", result);
     return result;
 }

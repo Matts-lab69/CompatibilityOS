@@ -180,11 +180,13 @@ check_spool_job() (
 )
 if check_spool_job; then printf 'ok spool-job\n'; else report spool-job; fi
 check_explorer() {
-    local trace="$PWD/explorer-trace.log"
+    local trace="$PWD/explorer-trace.log" status=0
     x86_64-w64-mingw32-gcc -municode "$root/tests/explorer-probe.c" -luser32 -o 'explorer-probe.exe' || return
     timeout 90 "$runner" --app 'explorer-fixture' -- "$exe64" || return
-    if ! WINEDEBUG='-all,+winstation,+win' timeout 90 "$runner" --app 'explorer-fixture' -- "$PWD/explorer-probe.exe" 2> "$trace"; then
-        tail -n 40 -- "$trace" >&2
+    WINEDEBUG='-all,err+all,+winstation,+win' timeout 90 "$runner" --app 'explorer-fixture' -- "$PWD/explorer-probe.exe" 2> "$trace" || status=$?
+    if (( status )); then
+        printf 'Explorer launcher returned %d\n' "$status" >&2
+        grep -E 'CPOSExplorerFixture|start(ed|ing) explorer|failed:|:err:' "$trace" | tail -n 60 >&2 || :
         return 1
     fi
     # Attribute the start and its successful completion to the same Wine thread.
