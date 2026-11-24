@@ -60,6 +60,31 @@ static int check_service(SC_HANDLE scm, const WCHAR *name, DWORD start)
     return 0;
 }
 
+static int wait_for_service(SC_HANDLE scm, const WCHAR *name, BOOL start)
+{
+    SERVICE_STATUS_PROCESS status;
+    DWORD needed, error = 0, state = 0;
+    SC_HANDLE service = OpenServiceW(scm, name, SERVICE_QUERY_STATUS | (start ? SERVICE_START : 0));
+
+    if (!service) { wprintf(L"OpenServiceW(%ls): %lu\n", name, GetLastError()); return 1; }
+    if (start && !StartServiceW(service, 0, NULL)) {
+        error = GetLastError();
+        if (error == ERROR_SERVICE_ALREADY_RUNNING) error = 0;
+    }
+    for (unsigned i = 0; !error && i < 50; ++i) {
+        if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (BYTE *)&status, sizeof(status), &needed)) {
+            error = GetLastError();
+            break;
+        }
+        state = status.dwCurrentState;
+        if (state == SERVICE_RUNNING) break;
+        Sleep(100);
+    }
+    CloseServiceHandle(service);
+    wprintf(L"SCM %ls: state=%lu error=%lu\n", name, state, error);
+    return error || state != SERVICE_RUNNING;
+}
+
 static int services(void)
 {
     SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
@@ -67,8 +92,10 @@ static int services(void)
     if (!scm) { printf("OpenSCManagerW: %lu\n", GetLastError()); return 1; }
     bad = check_service(scm, L"RpcSs", SERVICE_DEMAND_START) |
           check_service(scm, L"PlugPlay", SERVICE_AUTO_START);
-    CloseServiceHandle(scm);
     if (bad) puts("Unexpected RpcSs or PlugPlay configuration");
+    bad |= wait_for_service(scm, L"PlugPlay", FALSE);
+    bad |= wait_for_service(scm, L"RpcSs", TRUE);
+    CloseServiceHandle(scm);
     return bad;
 }
 
