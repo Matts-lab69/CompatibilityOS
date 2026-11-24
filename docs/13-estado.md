@@ -1,6 +1,21 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Development status
 
+## Execution inventory — 2026-11-24
+
+| Block | Status | Verified scope and gaps |
+| --- | --- | --- |
+| 0 — Inventory | HECHO | This inventory records the revision and CI evidence below; it does not certify the missing work. |
+| 1 — Sync | PARCIAL | [Wine CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45211101919): forced wineserver fallback. Missing active ntsync, fsync/esync and their degradation tests. |
+| 2 — Subsystems | PARCIAL | `71f2cee`, [Wine CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45211101919): isolated private font lifecycle and registry write, empty spool, synthetic SetupAPI and Fusion cache creation. Missing persistent discovery, a print job, managed GAC enumeration and service start assertions. |
+| 3 — Desktop | PARCIAL | `c69043e`, [static CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319520): notifier stubs and desktop/MIME validation. [Wine CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45211101919): Xvfb launch and log. Real COSMIC behavior remains unverified. |
+| 4 — PE loader | PARCIAL | `c69043e`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328): fixture execution and process-attach callback. Missing static TLS, TEB/PEB, general imports and a verified 10-million-iteration run. |
+| 5 — Kernel objects | PARCIAL | `c69043e`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328): compile only. Missing per-user named objects, safe descriptor transfer and runtime ioctl validation. |
+| 6 — Messaging | PARCIAL | `c69043e`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328): userspace pthread queue only; no module backing. |
+| 7 — ABI and closeout | PARCIAL | `c69043e`, [Phase 2 CI](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328): v1/v2 layouts passed; runtime ABI behavior and final scope reconciliation are pending. |
+
+**HECHO VERIFICADO:** [Wine CI run 45211101919](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45211101919) logged `Cache restored successfully`, `ok font-fixture`, and `ok subsystem-probes`; build, test and attestation passed. This supports the isolated lifecycle, not persistent font discovery or a definitive diagnosis of the earlier failure.
+
 **HECHO VERIFICADO — snapshot:** `c59b2a9`, 2026-11-23. HECHO means the specified deliverable passed CI; green checks on a subset do not close a partial milestone. NO INICIADO would mean no deliverable exists for the milestone, not merely that one of its requirements is missing.
 
 | Milestone | Status | Evidence and remaining work |
