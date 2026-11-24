@@ -4,6 +4,7 @@
 #include <linux/fs.h>
 #include <linux/file.h>
 #include <linux/jiffies.h>
+#include <linux/magic.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -39,6 +40,7 @@ struct cpos_object {
 	bool signaled;
 	bool removed;
 	struct task_struct *owner;
+	struct file *file;
 };
 
 static bool cpos_reserved_zero(const u64 reserved[2]);
@@ -195,6 +197,8 @@ static void cpos_object_put(struct cpos_object *obj)
 		return;
 	if (obj->owner)
 		put_task_struct(obj->owner);
+	if (obj->file)
+		fput(obj->file);
 	kfree(obj);
 }
 
@@ -343,11 +347,20 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		if (op.size != sizeof(op) || op.reserved0 || !cpos_reserved_zero(op.reserved) ||
 		    !op.handle || op.timeout_ms > CPOS_MAX_WAIT_MS)
 			return -EINVAL;
-		if (op.operation == CPOS_OP_FD_GET)
-			return -EOPNOTSUPP;
 		obj = cpos_object_find_get(ctx, op.handle);
 		if (!obj)
 			return -ENOENT;
+		if (op.operation == CPOS_OP_FD_GET) {
+			int fd;
+
+			if (obj->type != CPOS_OBJECT_FD_REF || !obj->file) {
+				cpos_object_put(obj);
+				return -EINVAL;
+			}
+			fd = receive_fd(obj->file, NULL, O_CLOEXEC);
+			cpos_object_put(obj);
+			return fd;
+		}
 		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_EVENT) {
 			spin_lock_irqsave(&ctx->state_lock, flags);
 			obj->signaled = true;
@@ -462,6 +475,66 @@ static long cpos_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 	if (cmd == CPOS_IOC_WAIT_SET)
 		return cpos_wait_set_ioctl(ctx, user);
+	if (cmd == CPOS_IOC_FD_IMPORT) {
+		struct cpos_fd_import req;
+		struct cpos_object *obj;
+		struct file *target;
+		u32 i;
+
+		if (!uid_eq(current_fsuid(), ctx->owner))
+			return -EACCES;
+		if (copy_from_user(&req, user, sizeof(req)))
+			return -EFAULT;
+		if (req.size != sizeof(req) || req.handle ||
+		    !cpos_reserved_zero(req.reserved) || req.fd < 0)
+			return -EINVAL;
+		target = fget(req.fd);
+		if (!target)
+			return -EBADF;
+		/* Admit only regular files from memory-backed filesystems. */
+		if ((target->f_mode & FMODE_PATH) || !S_ISREG(file_inode(target)->i_mode) ||
+		    (file_inode(target)->i_sb->s_magic != TMPFS_MAGIC &&
+		     file_inode(target)->i_sb->s_magic != RAMFS_MAGIC)) {
+			fput(target);
+			return -EINVAL;
+		}
+		obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+		if (!obj) {
+			fput(target);
+			return -ENOMEM;
+		}
+		refcount_set(&obj->refs, 1);
+		init_waitqueue_head(&obj->waiters);
+		obj->type = CPOS_OBJECT_FD_REF;
+		obj->file = target;
+		mutex_lock(&ctx->lock);
+		if (ctx->object_count == CPOS_MAX_OBJECTS || !ctx->next_handle) {
+			mutex_unlock(&ctx->lock);
+			cpos_object_put(obj);
+			return -ENOSPC;
+		}
+		for (i = 0; i < CPOS_MAX_OBJECTS; i++)
+			if (!ctx->objects[i])
+				break;
+		if (i == CPOS_MAX_OBJECTS) {
+			mutex_unlock(&ctx->lock);
+			cpos_object_put(obj);
+			return -ENOSPC;
+		}
+		req.handle = ctx->next_handle++;
+		obj->handle = req.handle;
+		ctx->objects[i] = obj;
+		ctx->object_count++;
+		if (copy_to_user(user, &req, sizeof(req))) {
+			ctx->objects[i] = NULL;
+			ctx->object_count--;
+			mutex_unlock(&ctx->lock);
+			cpos_object_put(obj);
+			return -EFAULT;
+		}
+		mutex_unlock(&ctx->lock);
+		return 0;
+	}
 
 	if (cmd == CPOS_IOC_QUERY) {
 		struct cpos_abi_info info;
