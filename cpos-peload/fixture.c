@@ -8,9 +8,9 @@ static unsigned int fixture_tls_index;
 
 static unsigned int *fixture_tls_slot(void)
 {
-    unsigned long *array;
+    uintptr_t *array;
     __asm__ volatile ("movq %%gs:0x58, %0" : "=r" (array));
-    return (unsigned int *)(uintptr_t)array[0];
+    return (unsigned int *)array[0];
 }
 
 typedef void (*tls_callback)(void *, unsigned long, void *);
