@@ -46,6 +46,34 @@ static void drop_object(int fd, __u64 handle)
 	CHECK(ioctl(fd, CPOS_IOC_OBJECT_DROP, &req) == 0);
 }
 
+static void check_wait_sets(int fd)
+{
+	__u64 event = 0, sem = 0;
+	struct cpos_wait_set req = {
+		.size = sizeof(req), .version = CPOS_ABI_VERSION_EXPERIMENTAL,
+		.mode = CPOS_WAIT_ALL, .count = 2,
+	};
+
+	CHECK(create_object(fd, CPOS_OBJECT_EVENT, 0, 0, &event) == 0);
+	CHECK(create_object(fd, CPOS_OBJECT_SEMAPHORE, 1, 1, &sem) == 0);
+	if (event && sem) {
+		req.handles[0] = event;
+		req.handles[1] = sem;
+		CHECK(ioctl(fd, CPOS_IOC_WAIT_SET, &req) < 0 && errno == ETIMEDOUT);
+		req.mode = CPOS_WAIT_ANY;
+		CHECK(ioctl(fd, CPOS_IOC_WAIT_SET, &req) == 1);
+		CHECK(ioctl(fd, CPOS_IOC_WAIT_SET, &req) < 0 && errno == ETIMEDOUT);
+		CHECK(object_op(fd, event, CPOS_OP_SIGNAL, 0) == 0);
+		CHECK(object_op(fd, sem, CPOS_OP_SIGNAL, 0) == 0);
+		req.mode = CPOS_WAIT_ALL;
+		CHECK(ioctl(fd, CPOS_IOC_WAIT_SET, &req) == 0);
+		CHECK(object_op(fd, sem, CPOS_OP_WAIT, 0) < 0 && errno == ETIMEDOUT);
+		CHECK(object_op(fd, event, CPOS_OP_WAIT, 0) == 0);
+	}
+	if (sem) drop_object(fd, sem);
+	if (event) drop_object(fd, event);
+}
+
 int main(void)
 {
 	struct cpos_abi_info info = { .size = sizeof(info) };
@@ -86,6 +114,7 @@ int main(void)
 		CHECK(object_op(fd, handle, CPOS_OP_RELEASE, 0) == 0);
 		drop_object(fd, handle);
 	} else CHECK(0 && "create mutex");
+	check_wait_sets(fd);
 	CHECK(close(fd) == 0);
 	if (failures)
 		fprintf(stderr, "%d functional assertion(s) failed\n", failures);
