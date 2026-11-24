@@ -44,6 +44,13 @@ struct cpos_object_op {
 	__aligned_u64 reserved[2];
 };
 
+struct cpos_fd_import {
+	__u32 size;
+	__s32 fd;
+	__aligned_u64 handle;
+	__aligned_u64 reserved[2];
+};
+
 struct cpos_wait_set {
 	__u32 size;
 	__u32 version;
@@ -72,6 +79,7 @@ struct cpos_wait_set {
 #define CPOS_IOC_OBJECT_DROP _IOW(CPOS_IOC_MAGIC, 0x11, struct cpos_object_request)
 #define CPOS_IOC_OBJECT_OP _IOWR(CPOS_IOC_MAGIC, 0x12, struct cpos_object_op)
 #define CPOS_IOC_WAIT_SET _IOW(CPOS_IOC_MAGIC, 0x13, struct cpos_wait_set)
+#define CPOS_IOC_FD_IMPORT _IOWR(CPOS_IOC_MAGIC, 0x14, struct cpos_fd_import)
 
 #define CPOS_IOC_MAGIC 0xc7
 #define CPOS_IOC_QUERY _IOWR(CPOS_IOC_MAGIC, 0x00, struct cpos_abi_info)
