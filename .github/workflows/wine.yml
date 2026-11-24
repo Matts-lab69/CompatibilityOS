@@ -10,15 +10,15 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - name: Install build tools on the hosted runner
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 \
+          sudo apt-get -o Acquire::Retries=5 update
+          sudo apt-get -o Acquire::Retries=5 install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 \
             bison flex pkg-config libx11-dev libxext-dev libxrandr-dev libxrender-dev libxi-dev \
             libxfixes-dev libxcursor-dev libxinerama-dev libxcomposite-dev libfreetype-dev \
             libvulkan-dev libpulse-dev libasound2-dev libudev-dev libusb-1.0-0-dev libfontconfig-dev xvfb xauth
@@ -35,7 +35,7 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -50,9 +50,10 @@ jobs:
         with:
           path: ${{ runner.temp }}/wine-test-debs
           key: wine-test-apt-noble-${{ runner.arch }}-${{ hashFiles('.github/workflows/wine.yml') }}
+          restore-keys: wine-test-apt-noble-${{ runner.arch }}-
       - name: Install test tools on the hosted runner
         id: test-tools
-        timeout-minutes: 25
+        timeout-minutes: 35
         shell: bash
         run: |
           cache="$RUNNER_TEMP/wine-test-debs"
