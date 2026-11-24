@@ -19,7 +19,7 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 ## Kernel boundary
 
-**HIPÓTESIS:** `/dev/compat` starts with ABI discovery and bounded per-open handle bookkeeping only. No cross-user object namespace or message queues are implemented by the skeleton. The device remains experimental and owner-only if loaded outside this project; this project does not load it. See [ABI v1](../cpos-kernel/ABI.md) for supported requests, layouts and errors. Shared NT objects and cross-process signaling require a separate review.
+The experimental `/dev/compat` device has bounded per-open handle tables and no cross-user object namespace. See the [versioned ABI](../cpos-kernel/ABI.md) for supported requests, layouts, errors and access rules. Shared NT objects and cross-process signaling require a separate design and review.
 
 **HECHO VERIFICADO:** [run 45147978579](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147978579) linked `cpos.ko` in the Ubuntu container and compiled the userspace ABI v1 layout assertions. Nothing loaded the module or opened the device. Earlier checkout failed because the minimal container lacked CA certificates; the corrected run installed the CA bundle without disabling TLS verification.
 
@@ -29,7 +29,7 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 - **HECHO VERIFICADO:** [run 45340819917](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340819917) passed the MinGW fixture (one static TLS slot through a minimal TEB, process-attach callback, and restoration of host GS), 10,000,000 parser fuzz iterations, and the guest ioctl and messaging jobs. The loader attempts the preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, and resolves only allowlisted fixture imports. It is not a sandbox. A PEB, general DLL loading, and process/thread initialization remain absent.
 - **HECHO VERIFICADO:** ABI v2 has per-open events, mutexes, semaphores and bounded single-object waits. ABI v1 remains available. Descriptor transfer remains disabled; named per-user objects, wait-any/all, and ntsync integration are not implemented.
-- **HIPÓTESIS:** The initial synchronous queue dispatches on the owning thread and wakes queued senders on close. It uses pthread primitives, not the device; there is no cross-process dispatch, Windows message pumping or deadlock resolution for cyclic sends.
+- **HECHO VERIFICADO:** The synchronous queue dispatches on the owning thread and wakes queued senders on close. It uses pthreads by default; the optional v2 event signals the owner, while pthreads still protect queue state and replies. There is no cross-process dispatch, Windows message pumping or deadlock resolution for cyclic sends.
 - **HECHO VERIFICADO:** [run 45167762949](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45167762949) reported `MinGW fixture entry: 0`, passed parser unit tests and 6,155,392 fuzz iterations, and passed the queue tests for owner dispatch, synchronous reply and close. It linked `cpos.ko` and passed compile-time layout assertions for ABI v1 and v2 without loading the module or opening the device. The layout assertions do not verify runtime ioctl behavior.
 - **SIN ANALIZAR — replacing wineserver:** object namespaces and access control, process/thread lifetimes, handle inheritance/duplication, abandoned mutexes, multi-object waits and APCs, async I/O, window ownership, registry state, and compatibility with Wine's client protocol.
 
