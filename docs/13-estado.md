@@ -16,6 +16,8 @@
 
 **HECHO VERIFICADO:** [Wine CI run 45211101919](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45211101919) logged `Cache restored successfully`, `ok font-fixture`, and `ok subsystem-probes`; build, test and attestation passed. This supports the isolated lifecycle, not persistent font discovery or a definitive diagnosis of the earlier failure.
 
+**HECHO VERIFICADO — static TLS corrections:** [45340397117](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340397117) reported `error: call to undeclared function 'syscall'`; `02c8f0c` exposes the declaration. [45340517416](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340517416) reported `error: cast to pointer from integer of different size [-Werror=int-to-pointer-cast]`; `407281a` corrected the cast. [45340644788](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340644788) then reported `AddressSanitizer: SEGV on unknown address 0x000000000010`; `bd46bc8` fixed the TLS array element width as well. The [next full Phase 2 run](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340819917) passed without disabling TLS, sanitizers, or `-Werror`.
+
 **HECHO VERIFICADO — snapshot:** `c59b2a9`, 2026-11-23. HECHO means the specified deliverable passed CI; green checks on a subset do not close a partial milestone. NO INICIADO would mean no deliverable exists for the milestone, not merely that one of its requirements is missing.
 
 | Milestone | Status | Evidence and remaining work |
