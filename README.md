@@ -15,6 +15,8 @@ I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or
 
 The launcher records per-app diagnostics under `"${XDG_STATE_HOME:-$HOME/.local/state}/cpos"`; desktop mode does not open a terminal. Native ntsync and the wineserver fallback are compiled; fsync and esync are not integrated. See the [verification inventory](docs/13-estado.md) and the separate [EXPERIMENTAL Phase 2](docs/12-fase2.md).
 
+The manual [Wine CI workflow](.github/workflows/wine.yml) also schedules static and isolated Phase 2 checks as independent jobs. Installer verification follows a successful attested Wine CI run; neither workflow deploys to a user's host.
+
 I license my standalone project code under [MIT](LICENSE) and my patches to Wine under `LGPL-2.1-or-later`.
 
 - [Design, audit, and measurement documents](docs/README.md)
