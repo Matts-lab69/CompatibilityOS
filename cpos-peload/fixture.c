@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+#include <stdint.h>
 static volatile unsigned int marker;
 static volatile unsigned int *volatile target = &marker;
 __attribute__((section(".tls$AAA"), used)) static const unsigned int fixture_tls_start = 41;
@@ -9,7 +10,7 @@ static unsigned int *fixture_tls_slot(void)
 {
     unsigned long *array;
     __asm__ volatile ("movq %%gs:0x58, %0" : "=r" (array));
-    return (unsigned int *)(unsigned long)array[0];
+    return (unsigned int *)(uintptr_t)array[0];
 }
 
 typedef void (*tls_callback)(void *, unsigned long, void *);
