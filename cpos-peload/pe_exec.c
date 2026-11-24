@@ -78,6 +78,7 @@ static int invoke_tls_callbacks(uint8_t *image, const uint8_t *metadata, const s
 
 struct fixture_tls {
     uint8_t teb[0x80];
+    uint8_t peb[0x20];
     uintptr_t slots[1];
     uint8_t *block;
 };
@@ -87,6 +88,10 @@ static int setup_tls(uint8_t *image, const uint8_t *metadata,
                      uint32_t tls_size, struct fixture_tls *tls)
 {
     memset(tls, 0, sizeof(*tls));
+    const uintptr_t peb_address = (uintptr_t)tls->peb;
+    const uintptr_t image_base = (uintptr_t)image;
+    memcpy(tls->teb + 0x60, &peb_address, sizeof(peb_address));
+    memcpy(tls->peb + 0x10, &image_base, sizeof(image_base));
     if (!tls_rva) return tls_size == 0;
     if (tls_size < PE_TLS_DIRECTORY_SIZE ||
         !image_range(parsed->image_size, tls_rva, PE_TLS_DIRECTORY_SIZE)) return 0;
