@@ -7,9 +7,15 @@
 static DWORD WINAPI probe_desktop(LPVOID parameter)
 {
     HDESK desktop = (HDESK)parameter;
+    HDESK original = GetThreadDesktop(GetCurrentThreadId());
     HWND window;
     DWORD owner = 0;
+    DWORD result = 1;
 
+    if (!original) {
+        fwprintf(stderr, L"GetThreadDesktop failed: %lu\n", GetLastError());
+        return 1;
+    }
     if (!SetThreadDesktop(desktop)) {
         fwprintf(stderr, L"SetThreadDesktop failed: %lu\n", GetLastError());
         return 1;
@@ -18,13 +24,20 @@ static DWORD WINAPI probe_desktop(LPVOID parameter)
     window = GetDesktopWindow();
     if (!window || !IsWindow(window)) {
         fwprintf(stderr, L"GetDesktopWindow returned an invalid HWND\n");
-        return 1;
+    } else {
+        GetWindowThreadProcessId(window, &owner);
+        wprintf(L"Explorer desktop API: desktop=%ls HWND=%p window_pid=%lu fixture_pid=%lu\n",
+                FIXTURE_DESKTOP_NAME, (void *)window, owner, GetCurrentProcessId());
+        result = 0;
     }
 
-    GetWindowThreadProcessId(window, &owner);
-    wprintf(L"Explorer desktop API: desktop=%ls HWND=%p window_pid=%lu fixture_pid=%lu\n",
-            FIXTURE_DESKTOP_NAME, (void *)window, owner, GetCurrentProcessId());
-    return 0;
+    /* Wine releases the assigned desktop handle on thread exit. Return to
+     * the original desktop so main can still close its own fixture handle. */
+    if (!SetThreadDesktop(original)) {
+        fwprintf(stderr, L"Restoring the original desktop failed: %lu\n", GetLastError());
+        return 1;
+    }
+    return result;
 }
 
 int wmain(void)
