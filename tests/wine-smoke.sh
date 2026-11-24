@@ -24,7 +24,7 @@ exe64="$PWD/probe64.exe"
 exe32="$PWD/probe32.exe"
 msi="$PWD/probe.msi"
 app() { timeout 90 "$runner" --app 'smoke' -- "$@"; }
-check_start() { "$wine" --version && app "$exe64" && grep -E 'cpos-sync: (ntsync|wineserver)' "$XDG_CONFIG_HOME/smoke/wine.log"; }
+check_start() { "$wine" --version && app "$exe64" && grep -E 'cpos-sync: (ntsync|wineserver)' "$XDG_STATE_HOME/cpos/smoke/wine.log"; }
 check_desktop_log() {
     local output log="$XDG_STATE_HOME/cpos/desktop-log/wine.log"
     if ! output=$(timeout 90 "$runner" --desktop --app 'desktop-log' -- "$exe64" 2>&1); then
@@ -59,8 +59,8 @@ EOF
 }
 check_sync_fallback() {
     CPOS_SYNC=wineserver timeout 90 "$runner" --app 'sync-fallback' -- "$exe64" &&
-        grep -Fx 'cpos-sync: wineserver' "$XDG_CONFIG_HOME/sync-fallback/wine.log" &&
-        ! grep -Fxq 'cpos-sync: ntsync' "$XDG_CONFIG_HOME/sync-fallback/wine.log"
+        grep -Fx 'cpos-sync: wineserver' "$XDG_STATE_HOME/cpos/sync-fallback/wine.log" &&
+        ! grep -Fxq 'cpos-sync: ntsync' "$XDG_STATE_HOME/cpos/sync-fallback/wine.log"
 }
 check_socket() {
     local pid found='' i

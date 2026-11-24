@@ -84,10 +84,9 @@ read -r version < "$base/version"
 [[ $version =~ ^[a-zA-Z0-9._-]+$ ]] || fail 'invalid base version'
 
 umask 077
-mkdir -p -- "$app_config" "$app_data" "$installer"
+mkdir -p -- "$app_config" "$app_data" "$installer" "$app_state"
+[[ ! -L $app_state/wine.log ]] || fail 'refusing a linked Wine log'
 if (( desktop )); then
-    mkdir -p -- "$app_state"
-    [[ ! -L $app_state/wine.log ]] || fail 'refusing a linked desktop log'
     exec </dev/null >>"$app_state/wine.log" 2>&1
 fi
 exec 9>"$app_config/.cpos.lock"
@@ -129,7 +128,7 @@ fi
 
 run_wine() {
     if (( desktop )); then "$wine" "$@" 9>&-
-    else "$wine" "$@" 9>&- 2> >(tee -a -- "$app_config/wine.log" >&2); fi
+    else "$wine" "$@" 9>&- 2> >(tee -a -- "$app_state/wine.log" >&2); fi
 }
 
 if [[ ! -f $prefix/.cpos-initialized ]]; then
