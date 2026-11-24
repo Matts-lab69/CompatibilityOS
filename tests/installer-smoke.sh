@@ -17,13 +17,24 @@ mkdir -p -- "$XDG_CONFIG_HOME" "$XDG_DATA_HOME/applications" "$XDG_DATA_HOME/ret
 printf '%s\n' '[Default Applications]' 'application/x-msi=previous.desktop;' > "$XDG_CONFIG_HOME/mimeapps.list"
 cp -- "$XDG_CONFIG_HOME/mimeapps.list" "$temp/original.defaults"
 printf '%s\n' 'keep' > "$XDG_DATA_HOME/retained-app/data"
+root="$XDG_DATA_HOME/compatibilityos"
+mkdir -p -- "$root/registration"
+ln -s -- "$XDG_DATA_HOME/retained-app/data" "$root/registration/before"
+if output=$(install uninstall 2>&1); then
+    printf 'Unexpected acceptance of linked registration\n' >&2
+    exit 1
+fi
+grep -F 'refusing linked installer registration: before' <<< "$output"
+grep -Fx 'keep' "$XDG_DATA_HOME/retained-app/data"
+rm -- "$root/registration/before"
+rmdir -- "$root/registration"
+echo 'ok linked registration rejected'
 install install "$run"
 echo 'ok attested installation'
 desktop="$XDG_DATA_HOME/applications/compatibilityos.desktop"
 desktop-file-validate "$desktop"
 grep -F -- ' --desktop -- %f' "$desktop"
 grep -F 'application/x-msi=compatibilityos.desktop' "$XDG_CONFIG_HOME/mimeapps.list"
-root="$XDG_DATA_HOME/compatibilityos"
 before=$(stat -c '%i:%Y' -- "$root/current" "$desktop" "$XDG_CONFIG_HOME/mimeapps.list")
 install install "$run"
 [[ $(stat -c '%i:%Y' -- "$root/current" "$desktop" "$XDG_CONFIG_HOME/mimeapps.list") == "$before" ]]
