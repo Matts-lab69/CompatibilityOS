@@ -11,7 +11,7 @@
 
 static int CALLBACK font_callback(const LOGFONTW *, const TEXTMETRICW *, DWORD, LPARAM);
 
-static int dejavu_visible(void)
+static int fixture_font_visible(void)
 {
     LOGFONTW query = {0};
     HDC dc = CreateCompatibleDC(NULL);
@@ -19,7 +19,7 @@ static int dejavu_visible(void)
 
     if (!dc) return -1;
     query.lfCharSet = DEFAULT_CHARSET;
-    lstrcpyW(query.lfFaceName, L"DejaVu Sans");
+    lstrcpyW(query.lfFaceName, L"CPOS Fixture Sans");
     EnumFontFamiliesExW(dc, &query, font_callback, (LPARAM)&found, 0);
     DeleteDC(dc);
     return found;
@@ -55,7 +55,7 @@ static int font_fixture(void)
         puts("fonts: CPOS_TEST_FONT_FILE path is too long");
         return 1;
     }
-    if (dejavu_visible() != FALSE) {
+    if (fixture_font_visible() != FALSE) {
         puts("fonts: fixture family must be absent before loading");
         return 1;
     }
@@ -96,7 +96,7 @@ static int font_fixture(void)
         goto cleanup;
     }
     added = TRUE;
-    if (dejavu_visible() != TRUE) {
+    if (fixture_font_visible() != TRUE) {
         puts("fonts: fixture family is not visible after loading");
         goto cleanup;
     }
@@ -107,7 +107,7 @@ cleanup:
     if (added && !RemoveFontResourceExW(target, FR_PRIVATE, NULL)) {
         printf("fonts: RemoveFontResourceExW failed (%lu)\n", GetLastError());
         result = 1;
-    } else if (added && dejavu_visible() != FALSE) {
+    } else if (added && fixture_font_visible() != FALSE) {
         puts("fonts: fixture family remains visible after removal");
         result = 1;
     }
@@ -148,7 +148,7 @@ static int CALLBACK font_callback(const LOGFONTW *font, const TEXTMETRICW *metri
                                   DWORD type, LPARAM data)
 {
     (void)metric; (void)type;
-    if (data && !lstrcmpiW(font->lfFaceName, L"DejaVu Sans")) {
+    if (data && !lstrcmpiW(font->lfFaceName, L"CPOS Fixture Sans")) {
         *(BOOL *)data = TRUE;
         return 0;
     }
