@@ -44,10 +44,10 @@ qemu-system-x86_64 \
 	-kernel "$kernel" -initrd "$work/initramfs.cpio" \
 	-append 'console=ttyS0 rdinit=/init panic=-1' \
 	-display none -monitor none -no-reboot -nic none -nodefaults -serial stdio \
-	>"$work/qemu.log" 2>&1
+	</dev/null >"$work/qemu.log" 2>&1
 status=$?
 set -e
-cat "$work/qemu.log"
+sed 's/^/[qemu] /' "$work/qemu.log"
 [ "$status" -eq 0 ] || { echo "QEMU exited with status $status" >&2; exit "$status"; }
 grep -Eq $'^GUEST TEST PASS\r?$' "$work/qemu.log" || {
 	echo "Guest did not report a successful test run" >&2

@@ -49,6 +49,7 @@ static void drop_object(int fd, __u64 handle)
 int main(void)
 {
 	struct cpos_abi_info info = { .size = sizeof(info) };
+	struct cpos_token_request token = { .size = sizeof(token) };
 	__u64 handle;
 	int fd = open("/dev/compat", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
@@ -57,6 +58,9 @@ int main(void)
 	}
 	CHECK(ioctl(fd, CPOS_IOC_QUERY, &info) == 0);
 	CHECK(info.version == CPOS_ABI_VERSION && info.max_tokens == CPOS_MAX_TOKENS);
+	CHECK(ioctl(fd, CPOS_IOC_CREATE, &token) == 0 && token.token != 0);
+	if (token.token)
+		CHECK(ioctl(fd, CPOS_IOC_DROP, &token) == 0);
 
 	if (create_object(fd, CPOS_OBJECT_EVENT, 0, 0, &handle) == 0) {
 		CHECK(object_op(fd, handle, CPOS_OP_WAIT, 0) < 0 && errno == ETIMEDOUT);
