@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(CPOS_TEST_EXEC) && defined(__linux__) && defined(__x86_64__)
+#include <asm/prctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 
 static void w16(uint8_t *p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
 static void w32(uint8_t *p, uint32_t v) { for (unsigned i = 0; i < 4; ++i) p[i] = (uint8_t)(v >> (8 * i)); }
@@ -50,7 +55,15 @@ int main(int argc, char **argv)
         int failed = ferror(in) || !feof(in);
         if (fclose(in) || failed) return 1;
         const struct pe_exec_options options = {NULL, 0, 1};
+#if defined(__linux__) && defined(__x86_64__)
+        uintptr_t original_gs = 0, restored_gs = 0;
+        if (syscall(SYS_arch_prctl, ARCH_GET_GS, &original_gs) != 0) return 1;
+#endif
         enum pe_status status = pe_execute_fixture(fixture, n, &options);
+#if defined(__linux__) && defined(__x86_64__)
+        if (syscall(SYS_arch_prctl, ARCH_GET_GS, &restored_gs) != 0 ||
+            restored_gs != original_gs) return 1;
+#endif
         printf("MinGW fixture entry: %d\n", status);
         return status != PE_OK;
     }

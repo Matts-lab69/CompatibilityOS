@@ -7,6 +7,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
+#include <sys/syscall.h>
+#include <asm/prctl.h>
 #include <unistd.h>
 
 static uint16_t r16(const uint8_t *p) { return (uint16_t)p[0] | (uint16_t)p[1] << 8; }
@@ -46,7 +48,7 @@ static int invoke_tls_callbacks(uint8_t *image, const uint8_t *metadata, const s
         !image_range(parsed->image_size, tls_rva, tls_size)) return 0;
 
     const uint8_t *tls = metadata + tls_rva;
-    if (r64(tls) != r64(tls + 8) || r32(tls + 32)) return 0;
+    if (r32(tls + 32)) return 0;
     uint64_t callbacks_va = r64(tls + 24);
     if (!callbacks_va) return 1;
     if (callbacks_va < parsed->image_base ||
@@ -72,6 +74,51 @@ static int invoke_tls_callbacks(uint8_t *image, const uint8_t *metadata, const s
          (image + callback_rva))(image, 1, NULL);
     }
     return 1;
+}
+
+struct fixture_tls {
+    uint8_t teb[0x80];
+    uintptr_t slots[1];
+    uint8_t *block;
+};
+
+static int setup_tls(uint8_t *image, const uint8_t *metadata,
+                     const struct pe_image *parsed, uint32_t tls_rva,
+                     uint32_t tls_size, struct fixture_tls *tls)
+{
+    memset(tls, 0, sizeof(*tls));
+    if (!tls_rva) return tls_size == 0;
+    if (tls_size < PE_TLS_DIRECTORY_SIZE ||
+        !image_range(parsed->image_size, tls_rva, PE_TLS_DIRECTORY_SIZE)) return 0;
+    const uint8_t *directory = metadata + tls_rva;
+    uint64_t start = r64(directory), end = r64(directory + 8);
+    uint64_t index_va = r64(directory + 16);
+    uint32_t zero_fill = r32(directory + 32);
+    int empty_template = start == 0 && end == 0;
+    if (end < start || end - start > parsed->image_size ||
+        zero_fill > parsed->image_size - (size_t)(end - start) ||
+        (!empty_template && (start < parsed->image_base ||
+         end - parsed->image_base > parsed->image_size)) ||
+        (index_va && (index_va < parsed->image_base ||
+         index_va - parsed->image_base > parsed->image_size - sizeof(uint32_t)))) return 0;
+    size_t template_size = (size_t)(end - start);
+    size_t block_size = template_size + zero_fill;
+    tls->block = calloc(block_size ? block_size : 1, 1);
+    if (!tls->block) return 0;
+    if (template_size) memcpy(tls->block, metadata + (uint32_t)(start - parsed->image_base), template_size);
+    tls->slots[0] = (uintptr_t)tls->block;
+    uintptr_t slots_address = (uintptr_t)tls->slots;
+    memcpy(tls->teb + 0x58, &slots_address, sizeof(slots_address));
+    if (index_va) {
+        uint32_t slot = 0;
+        memcpy(image + (uint32_t)(index_va - parsed->image_base), &slot, sizeof(slot));
+    }
+    return 1;
+}
+
+static int set_gs(uintptr_t base)
+{
+    return syscall(SYS_arch_prctl, ARCH_SET_GS, base) == 0;
 }
 
 static int resolve_import(const struct pe_exec_options *o, const char *module,
@@ -144,6 +191,8 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
         image = mmap(NULL, image_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (image == MAP_FAILED) { pe_stage_free(file_image, image_size); return PE_NOMEM; }
     memcpy(image, file_image, image_size);
+    struct fixture_tls *tls = calloc(1, sizeof(*tls));
+    if (!tls) goto unsupported;
 
     const uint8_t *opt = data + r32(data + 0x3c) + 24;
     uint32_t dir_count = r32(opt + 108);
@@ -171,6 +220,7 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
         }
     }
     if (!bind_imports(image, file_image, import_rva, options)) goto invalid;
+    if (options->invoke_entry && !setup_tls(image, file_image, &parsed, tls_rva, tls_size, tls)) goto unsupported;
     if (mprotect(image, image_size, PROT_READ) != 0) goto unsupported;
     int executable_entry = 0;
     for (uint16_t i = 0; i < parsed.section_count; ++i) {
@@ -191,14 +241,28 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     }
     if (options->invoke_entry) {
         if (!executable_entry) goto unsupported;
-        if (!invoke_tls_callbacks(image, file_image, &parsed, opt, tls_rva, tls_size)) goto unsupported;
-        ((void (__attribute__((ms_abi)) *)(void))(image + parsed.entry_rva))();
+        uintptr_t previous_gs = 0;
+        if (syscall(SYS_arch_prctl, ARCH_GET_GS, &previous_gs) != 0) goto unsupported;
+        if (!set_gs((uintptr_t)tls->teb)) goto unsupported;
+        int callbacks_ok = invoke_tls_callbacks(image, file_image, &parsed, opt, tls_rva, tls_size);
+        if (callbacks_ok)
+            ((void (__attribute__((ms_abi)) *)(void))(image + parsed.entry_rva))();
+        int restored = set_gs(previous_gs);
+        if (!restored) {
+            tls = NULL;
+            goto unsupported;
+        }
+        free(tls->block);
+        tls->block = NULL;
+        if (!callbacks_ok) goto unsupported;
     }
+    free(tls);
     munmap(image, image_size);
     pe_stage_free(file_image, image_size);
     return PE_OK;
 invalid:
 unsupported:
+    if (tls) { free(tls->block); free(tls); }
     munmap(image, image_size);
     pe_stage_free(file_image, image_size);
     return PE_UNSUPPORTED;
