@@ -160,4 +160,23 @@ check_gac() {
         "\\\\?\\unix${fusion_dll//\//\\}" "\\\\?\\unix${fixture//\//\\}" "$identity"
 }
 if (check_gac); then printf 'ok gac-fixture\n'; else report gac-fixture; fi
+check_spool_job() (
+    port='' log="$PWD/spool-sink.log" socket='/run/cups/cups.sock'
+    x86_64-w64-mingw32-gcc -municode "$root/tests/spool-probe.c" -lwinspool -o 'spool-probe.exe' || return
+    /usr/bin/python3 "$root/tests/spool-sink.py" > "$log" 2>&1 &
+    sink=$!
+    # This function runs in a subshell. Clean up even if provisioning fails.
+    trap 'kill "$sink" 2>/dev/null || :; sudo lpadmin -h "$socket" -x CPOSFixture || :; cat -- "$log"' EXIT
+    for ((i=0; i<50; i++)); do
+        port=$(sed -nE 's/^READY 127\.0\.0\.1 ([0-9]+)$/\1/p' "$log")
+        [[ -z $port ]] || break
+        kill -0 "$sink" 2>/dev/null || return 1
+        sleep 0.1
+    done
+    [[ $port =~ ^[0-9]+$ ]] || return 1
+    sudo lpadmin -h "$socket" -p 'CPOSFixture' -E -v "socket://127.0.0.1:$port" -m raw -o printer-is-shared=false || return
+    CUPS_SERVER="$socket" timeout 90 "$runner" --app 'spool-fixture' -- "$PWD/spool-probe.exe" || return
+    wait "$sink"
+)
+if check_spool_job; then printf 'ok spool-job\n'; else report spool-job; fi
 exit "$failed"

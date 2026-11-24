@@ -21,7 +21,7 @@ jobs:
           sudo apt-get -o Acquire::Retries=5 install -y --no-install-recommends gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 \
             bison flex pkg-config libx11-dev libxext-dev libxrandr-dev libxrender-dev libxi-dev \
             libxfixes-dev libxcursor-dev libxinerama-dev libxcomposite-dev libfreetype-dev \
-            libvulkan-dev libpulse-dev libasound2-dev libudev-dev libusb-1.0-0-dev libfontconfig-dev xvfb xauth
+            libvulkan-dev libpulse-dev libasound2-dev libudev-dev libusb-1.0-0-dev libfontconfig-dev libcups2-dev xvfb xauth
       - name: Build bundle
         run: bash 'ci/build-wine.sh' "$RUNNER_TEMP"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -60,7 +60,7 @@ jobs:
           archives="$RUNNER_TEMP/wine-test-apt/archives"
           mkdir -p -- "$cache" "$archives"
           shopt -s nullglob
-          packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs python3-fonttools mono-devel)
+          packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs python3-fonttools mono-devel cups-daemon cups-client cups-core-drivers)
           options=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o "Dir::Cache::archives=$archives")
           sudo apt-get "${options[@]}" -o APT::Update::Error-Mode=any update
           for archive in "$cache/"*.deb; do
@@ -97,7 +97,11 @@ jobs:
           path: ${{ runner.temp }}/wine-test-debs
           key: ${{ steps.test-apt.outputs.cache-primary-key }}
       - name: Test Windows dispatch and WoW64 under Xvfb
-        run: xvfb-run -a bash 'tests/wine-smoke.sh' "$RUNNER_TEMP"
+        run: |
+          sudo systemctl start cups.service
+          test -S '/run/cups/cups.sock'
+          test -x '/usr/lib/cups/backend/socket'
+          xvfb-run -a bash 'tests/wine-smoke.sh' "$RUNNER_TEMP"
   attest:
     needs: test
     if: github.ref == 'refs/heads/main'
