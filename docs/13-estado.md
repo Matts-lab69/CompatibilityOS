@@ -1,6 +1,12 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Development status
 
+## Recovery and local checks
+
+**HECHO VERIFICADO:** after the shutdown the checkout was clean, the stash was empty, and local `HEAD` and remote `main` agreed at `2fbbfd0`. The six active patches passed `git apply --check` in series order on a fresh external shallow checkout of `7298a818`; the checkout was removed. The optional fsync update fails on this pin; see [candidate notes](../patches/upstream-candidates/README.md). No local Wine or module build was run.
+
+**SIN ANALIZAR:** the current Wine CI result for `30fd688`; the last recorded Explorer error is `CloseDesktop failed: 6` before that correction. Do not infer a fixed runtime from the source edit. Historical green runs below are evidence only for their own revisions.
+
 ## Execution inventory — 2026-11-24
 
 | Block | Status | Verified scope and gaps |
