@@ -32,14 +32,16 @@ static int font_fixture(void)
                                                 PHKEY, LPDWORD);
     typedef LSTATUS (WINAPI *reg_set_value_fn)(HKEY, LPCWSTR, DWORD, DWORD,
                                                const BYTE *, DWORD);
+    typedef LSTATUS (WINAPI *reg_query_value_fn)(HKEY, LPCWSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD);
     typedef LSTATUS (WINAPI *reg_delete_value_fn)(HKEY, LPCWSTR);
     typedef LSTATUS (WINAPI *reg_close_key_fn)(HKEY);
-    WCHAR source[1024], target[1300];
+    WCHAR source[1024], target[1300], registered[1300];
     WCHAR value_name[64], registry_path[] = L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
-    DWORD length;
+    DWORD length, registered_size = sizeof(registered), type = 0, expected_size;
     HMODULE advapi = NULL;
     reg_create_key_fn reg_create_key;
     reg_set_value_fn reg_set_value;
+    reg_query_value_fn reg_query_value;
     reg_delete_value_fn reg_delete_value;
     reg_close_key_fn reg_close_key;
     HKEY key = NULL;
@@ -74,23 +76,29 @@ static int font_fixture(void)
     if (!advapi) { printf("fonts: load advapi32 failed (%lu)\n", GetLastError()); goto cleanup; }
     reg_create_key = (reg_create_key_fn)GetProcAddress(advapi, "RegCreateKeyExW");
     reg_set_value = (reg_set_value_fn)GetProcAddress(advapi, "RegSetValueExW");
+    reg_query_value = (reg_query_value_fn)GetProcAddress(advapi, "RegQueryValueExW");
     reg_delete_value = (reg_delete_value_fn)GetProcAddress(advapi, "RegDeleteValueW");
     reg_close_key = (reg_close_key_fn)GetProcAddress(advapi, "RegCloseKey");
-    if (!reg_create_key || !reg_set_value || !reg_delete_value || !reg_close_key) {
+    if (!reg_create_key || !reg_set_value || !reg_query_value || !reg_delete_value || !reg_close_key) {
         puts("fonts: required registry API unavailable");
         goto cleanup;
     }
-    if (reg_create_key(HKEY_CURRENT_USER, registry_path, 0, NULL, 0, KEY_SET_VALUE,
+    if (reg_create_key(HKEY_CURRENT_USER, registry_path, 0, NULL, 0, KEY_SET_VALUE | KEY_QUERY_VALUE,
                        NULL, &key, NULL) != ERROR_SUCCESS) {
         puts("fonts: could not open per-user Fonts registry key");
         goto cleanup;
     }
-    if (reg_set_value(key, value_name, 0, REG_SZ, (const BYTE *)target,
-                      (DWORD)((wcslen(target) + 1) * sizeof(WCHAR))) != ERROR_SUCCESS) {
+    expected_size = (DWORD)((wcslen(target) + 1) * sizeof(WCHAR));
+    if (reg_set_value(key, value_name, 0, REG_SZ, (const BYTE *)target, expected_size) != ERROR_SUCCESS) {
         puts("fonts: could not create CI registry entry");
         goto cleanup;
     }
     value_created = TRUE;
+    if (reg_query_value(key, value_name, NULL, &type, (BYTE *)registered, &registered_size) != ERROR_SUCCESS ||
+        type != REG_SZ || registered_size != expected_size || memcmp(target, registered, expected_size)) {
+        puts("fonts: per-user registry value did not match the copied fixture path");
+        goto cleanup;
+    }
     if (!AddFontResourceExW(target, FR_PRIVATE, NULL)) {
         printf("fonts: AddFontResourceExW failed (%lu)\n", GetLastError());
         goto cleanup;
