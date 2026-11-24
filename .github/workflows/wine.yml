@@ -57,21 +57,27 @@ jobs:
         shell: bash
         run: |
           cache="$RUNNER_TEMP/wine-test-debs"
-          archives='/var/cache/apt/archives'
-          mkdir -p -- "$cache"
+          archives="$RUNNER_TEMP/wine-test-apt/archives"
+          mkdir -p -- "$cache" "$archives"
           shopt -s nullglob
           packages=(gcc-mingw-w64-x86-64-posix gcc-mingw-w64-i686-posix wixl xvfb xauth xdg-user-dirs python3-fonttools mono-devel)
-          options=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
-          sudo apt-get "${options[@]}" update
+          options=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o "Dir::Cache::archives=$archives")
+          sudo apt-get "${options[@]}" -o APT::Update::Error-Mode=any update
           for archive in "$cache/"*.deb; do
             [[ -f $archive && ! -L $archive ]] || continue
             package=$(dpkg-deb -f "$archive" Package) || continue
             version=$(dpkg-deb -f "$archive" Version) || continue
-            [[ $package =~ ^[a-z0-9][a-z0-9+.-]+$ && $version =~ ^[0-9][a-zA-Z0-9.+:~_-]*$ ]] || continue
+            architecture=$(dpkg-deb -f "$archive" Architecture) || continue
+            [[ $package =~ ^[a-z0-9][a-z0-9+.-]+$ && $version =~ ^[0-9][a-zA-Z0-9.+:~-]*$ && $architecture =~ ^[a-z0-9-]+$ ]] || continue
+            [[ ${archive##*/} == "${package}_${version//:/%3a}_${architecture}.deb" ]] || continue
             digest=$(sha256sum -- "$archive")
             digest=${digest%% *}
-            # Match a checksum from the current authenticated APT indexes.
-            if apt-cache show "$package=$version" | grep -Fx "SHA256: $digest" >/dev/null; then
+            # Match architecture and checksum in the same authenticated stanza.
+            if apt-cache show "$package=$version" | awk -v arch="$architecture" -v sha="$digest" '
+              BEGIN { RS=""; FS="\n" }
+              { a=0; s=0; for (i=1; i<=NF; i++) { if ($i == "Architecture: " arch) a=1; if ($i == "SHA256: " sha) s=1 } if (a && s) found=1 }
+              END { exit !found }
+            '; then
               sudo install -m 644 -- "$archive" "$archives/"
             fi
           done
