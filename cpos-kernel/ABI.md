@@ -80,6 +80,15 @@ the mutex does not auto-release it, and there is no deadlock detection or
 priority inheritance. Objects cannot be shared across independent opens or
 user namespaces; there is no global naming or cross-user sharing.
 
+`CPOS_IOC_WAIT_SET` (`_IOW(0xc7, 0x13, struct cpos_wait_set)`) takes a
+552-byte input with `version=2`, `count=1..64`, distinct nonzero per-open
+handles, the same timeout as `WAIT`, and zero unused handles and reserved
+fields. `CPOS_WAIT_ANY` returns the input index of the first available object;
+`CPOS_WAIT_ALL` returns zero and acquires all objects atomically, or none on
+failure. Manual-reset events stay signaled. A dropped object wakes the waiter
+and returns `EIDRM`. Recursive or abandoned mutexes and Windows APC semantics
+are not implemented. **SIN ANALIZAR:** execution of the new ioctl in a guest.
+
 The present namespace is per-open-file, which is stricter than per-user
 isolation and prevents sharing even between two opens by the same user. There
 is no global named namespace, cross-process sharing, or user-namespace mapping;
