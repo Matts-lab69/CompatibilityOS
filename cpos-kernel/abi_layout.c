@@ -19,3 +19,7 @@ _Static_assert(offsetof(struct cpos_object_op, reserved) == 24, "operation reser
 _Static_assert(_IOC_SIZE(CPOS_IOC_OBJECT_CREATE) == 40, "object create ioctl payload size");
 _Static_assert(_IOC_SIZE(CPOS_IOC_OBJECT_DROP) == 40, "object drop ioctl payload size");
 _Static_assert(_IOC_SIZE(CPOS_IOC_OBJECT_OP) == 40, "object op ioctl payload size");
+_Static_assert(sizeof(struct cpos_wait_set) == 552, "wait set size");
+_Static_assert(offsetof(struct cpos_wait_set, handles) == 24, "wait set handle offset");
+_Static_assert(offsetof(struct cpos_wait_set, reserved) == 536, "wait set reserved offset");
+_Static_assert(_IOC_SIZE(CPOS_IOC_WAIT_SET) == 552, "wait set ioctl payload size");
