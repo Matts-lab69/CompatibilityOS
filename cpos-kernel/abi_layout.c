@@ -23,3 +23,7 @@ _Static_assert(sizeof(struct cpos_wait_set) == 552, "wait set size");
 _Static_assert(offsetof(struct cpos_wait_set, handles) == 24, "wait set handle offset");
 _Static_assert(offsetof(struct cpos_wait_set, reserved) == 536, "wait set reserved offset");
 _Static_assert(_IOC_SIZE(CPOS_IOC_WAIT_SET) == 552, "wait set ioctl payload size");
+_Static_assert(sizeof(struct cpos_fd_import) == 32, "fd import size");
+_Static_assert(offsetof(struct cpos_fd_import, handle) == 8, "fd import handle offset");
+_Static_assert(offsetof(struct cpos_fd_import, reserved) == 16, "fd import reserved offset");
+_Static_assert(_IOC_SIZE(CPOS_IOC_FD_IMPORT) == 32, "fd import ioctl payload size");
