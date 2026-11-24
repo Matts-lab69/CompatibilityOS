@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+#define _GNU_SOURCE
 #include "pe.h"
 
 #include <assert.h>
