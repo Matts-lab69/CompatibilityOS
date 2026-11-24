@@ -86,7 +86,7 @@ fields. `CPOS_WAIT_ANY` returns the input index of the first available object;
 `CPOS_WAIT_ALL` returns zero and acquires all objects atomically, or none on
 failure. Manual-reset events stay signaled. A dropped object wakes the waiter
 and returns `EIDRM`. Recursive or abandoned mutexes and Windows APC semantics
-are not implemented. **SIN ANALIZAR:** execution of the new ioctl in a guest.
+are not implemented. **HECHO VERIFICADO:** the [final guest job](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465) passed the wait-set smoke tests.
 
 `CPOS_IOC_FD_IMPORT` (`_IOWR(0xc7, 0x14, struct cpos_fd_import)`) takes a
 32-byte input with an open descriptor and zero handle/reserved fields. It
@@ -96,7 +96,7 @@ accepted; `O_PATH`, devices and other filesystem types are excluded. A
 through Linux `receive_fd`, which checks LSM policy. Dropping the handle
 releases the retained file reference, not any descriptor already returned.
 File references cannot participate in waits or be looked up by another open.
-**SIN ANALIZAR:** guest execution and the kernel export on the CI image.
+**HECHO VERIFICADO:** the same guest job passed the restricted file-reference smoke test on the CI kernel.
 
 The present namespace is per-open-file, which is stricter than per-user
 isolation and prevents sharing even between two opens by the same user. There
