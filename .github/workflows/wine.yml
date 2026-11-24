@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 jobs:
+  static:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/static.yml
+  experimental:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/phase2.yml
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
