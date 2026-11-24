@@ -21,9 +21,10 @@ jobs:
           bash 'installer/install.sh' --dry-run install 1
       - name: Validate desktop and MIME templates
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends desktop-file-utils shared-mime-info
+          sudo apt-get -o Acquire::Retries=5 update
+          sudo apt-get -o Acquire::Retries=5 install -y --no-install-recommends desktop-file-utils shared-mime-info libxml2-utils
           desktop-file-validate 'packaging/mime/compatibilityos.desktop'
+          xmllint --nonet --noout 'packaging/mime/compatibilityos.xml'
           database=$(mktemp -d)
           mkdir -p -- "$database/packages"
           cp -- 'packaging/mime/compatibilityos.xml' "$database/packages/"
