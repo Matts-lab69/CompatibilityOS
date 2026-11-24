@@ -18,6 +18,8 @@
 
 struct cpos_file {
 	struct mutex lock;
+	spinlock_t state_lock;
+	wait_queue_head_t waiters;
 	u64 tokens[CPOS_MAX_TOKENS];
 	u32 count;
 	u64 next_token;
@@ -29,7 +31,6 @@ struct cpos_file {
 
 struct cpos_object {
 	refcount_t refs;
-	spinlock_t lock;
 	wait_queue_head_t waiters;
 	u32 type;
 	u32 count;
@@ -41,8 +42,152 @@ struct cpos_object {
 };
 
 static bool cpos_reserved_zero(const u64 reserved[2]);
+static void cpos_object_put(struct cpos_object *obj);
 
 #define CPOS_MAX_WAIT_MS (24U * 60U * 60U * 1000U)
+
+static bool cpos_wait_set_ready(struct cpos_file *ctx, struct cpos_object **objects,
+				struct cpos_wait_set *wait, u32 *result,
+				bool consume, bool *removed)
+{
+	unsigned long flags;
+	u32 i, available_count = 0, selected = wait->count;
+	bool ready;
+
+	spin_lock_irqsave(&ctx->state_lock, flags);
+	*removed = false;
+	for (i = 0; i < wait->count; i++) {
+		struct cpos_object *obj = objects[i];
+		bool available;
+
+		if (obj->removed) {
+			*removed = true;
+			break;
+		}
+		available = obj->type == CPOS_OBJECT_EVENT ? obj->signaled :
+			obj->type == CPOS_OBJECT_MUTEX ? !obj->owner : obj->count != 0;
+		if (available) {
+			available_count++;
+			if (selected == wait->count)
+				selected = i;
+		}
+	}
+	ready = !*removed && (wait->mode == CPOS_WAIT_ALL ? available_count == wait->count :
+		available_count != 0);
+	if (ready && consume) {
+		*result = selected;
+		for (i = 0; i < wait->count; i++) {
+			struct cpos_object *obj;
+
+			if (wait->mode == CPOS_WAIT_ANY && i != selected)
+				continue;
+			obj = objects[i];
+			if (obj->type == CPOS_OBJECT_MUTEX) {
+				obj->owner = current;
+				get_task_struct(current);
+			} else if (obj->type == CPOS_OBJECT_SEMAPHORE) {
+				obj->count--;
+			}
+		}
+	}
+	spin_unlock_irqrestore(&ctx->state_lock, flags);
+	return ready;
+}
+
+static long cpos_wait_set_ioctl(struct cpos_file *ctx, void __user *user)
+{
+	struct cpos_wait_set wait;
+	struct cpos_object *objects[CPOS_MAX_WAIT_HANDLES];
+	unsigned long deadline, remaining;
+	long waited;
+	u32 i, j, result = 0;
+	int error = -ENOENT;
+	bool ready;
+
+	if (!uid_eq(current_fsuid(), ctx->owner))
+		return -EACCES;
+	if (copy_from_user(&wait, user, sizeof(wait)))
+		return -EFAULT;
+	if (wait.size != sizeof(wait) || wait.version != CPOS_ABI_VERSION_EXPERIMENTAL ||
+	    (wait.mode != CPOS_WAIT_ANY && wait.mode != CPOS_WAIT_ALL) ||
+	    !wait.count || wait.count > CPOS_MAX_WAIT_HANDLES ||
+	    wait.timeout_ms > CPOS_MAX_WAIT_MS || wait.reserved0 ||
+	    !cpos_reserved_zero(wait.reserved))
+		return -EINVAL;
+	for (i = wait.count; i < CPOS_MAX_WAIT_HANDLES; i++)
+		if (wait.handles[i])
+			return -EINVAL;
+	mutex_lock(&ctx->lock);
+	for (i = 0; i < wait.count; i++) {
+		if (!wait.handles[i]) {
+			error = -EINVAL;
+			break;
+		}
+		for (j = 0; j < i; j++)
+			if (wait.handles[i] == wait.handles[j])
+				break;
+		if (j != i) {
+			error = -EINVAL;
+			break;
+		}
+		for (j = 0; j < CPOS_MAX_OBJECTS; j++)
+			if (ctx->objects[j] && ctx->objects[j]->handle == wait.handles[i])
+				break;
+		if (j == CPOS_MAX_OBJECTS)
+			break;
+		if (ctx->objects[j]->type != CPOS_OBJECT_EVENT &&
+		    ctx->objects[j]->type != CPOS_OBJECT_MUTEX &&
+		    ctx->objects[j]->type != CPOS_OBJECT_SEMAPHORE) {
+			error = -EINVAL;
+			break;
+		}
+		objects[i] = ctx->objects[j];
+		refcount_inc(&objects[i]->refs);
+	}
+	mutex_unlock(&ctx->lock);
+	if (i != wait.count) {
+		while (i)
+			cpos_object_put(objects[--i]);
+		return error;
+	}
+	deadline = jiffies + msecs_to_jiffies(wait.timeout_ms);
+	for (;;) {
+		bool removed;
+
+		ready = cpos_wait_set_ready(ctx, objects, &wait, &result, true, &removed);
+		if (ready)
+			break;
+		if (removed) {
+			for (i = 0; i < wait.count; i++)
+				cpos_object_put(objects[i]);
+			return -EIDRM;
+		}
+		remaining = time_before(jiffies, deadline) ? deadline - jiffies : 0;
+		waited = wait_event_interruptible_timeout(ctx->waiters,
+			cpos_wait_set_ready(ctx, objects, &wait, &result, false, &removed) || removed,
+			remaining);
+		if (waited < 0) {
+			for (i = 0; i < wait.count; i++)
+				cpos_object_put(objects[i]);
+			return waited;
+		}
+		if (removed) {
+			for (i = 0; i < wait.count; i++)
+				cpos_object_put(objects[i]);
+			return -EIDRM;
+		}
+		if (!waited)
+			break;
+	}
+	if (!ready) {
+		for (i = 0; i < wait.count; i++)
+			cpos_object_put(objects[i]);
+		return -ETIMEDOUT;
+	}
+	for (i = 0; i < wait.count; i++)
+		cpos_object_put(objects[i]);
+	return wait.mode == CPOS_WAIT_ANY ? result : 0;
+}
 
 static void cpos_object_put(struct cpos_object *obj)
 {
@@ -78,6 +223,8 @@ static int cpos_open(struct inode *inode, struct file *file)
 	if (!ctx)
 		return -ENOMEM;
 	mutex_init(&ctx->lock);
+	spin_lock_init(&ctx->state_lock);
+	init_waitqueue_head(&ctx->waiters);
 	ctx->next_token = 1;
 	ctx->next_handle = 1;
 	ctx->owner = current_fsuid();
@@ -101,6 +248,7 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 			      void __user *user)
 {
 	struct cpos_object *obj;
+	unsigned long flags;
 	u32 i;
 
 	if (!uid_eq(current_fsuid(), ctx->owner))
@@ -126,7 +274,6 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		if (!obj)
 			return -ENOMEM;
 		refcount_set(&obj->refs, 1);
-		spin_lock_init(&obj->lock);
 		init_waitqueue_head(&obj->waiters);
 		obj->type = req.type;
 		obj->count = req.initial_value;
@@ -176,11 +323,12 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		obj = ctx->objects[i];
 		ctx->objects[i] = NULL;
 		ctx->object_count--;
-		spin_lock(&obj->lock);
+		spin_lock_irqsave(&ctx->state_lock, flags);
 		obj->removed = true;
-		spin_unlock(&obj->lock);
+		spin_unlock_irqrestore(&ctx->state_lock, flags);
 		mutex_unlock(&ctx->lock);
 		wake_up_all(&obj->waiters);
+		wake_up_all(&ctx->waiters);
 		cpos_object_put(obj);
 		return 0;
 	}
@@ -201,47 +349,50 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 		if (!obj)
 			return -ENOENT;
 		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_EVENT) {
-			spin_lock_irqsave(&obj->lock, flags);
+			spin_lock_irqsave(&ctx->state_lock, flags);
 			obj->signaled = true;
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			wake_up_all(&obj->waiters);
+			wake_up_all(&ctx->waiters);
 			cpos_object_put(obj);
 			return 0;
 		}
 		if (op.operation == CPOS_OP_RELEASE && obj->type == CPOS_OBJECT_EVENT) {
-			spin_lock_irqsave(&obj->lock, flags);
+			spin_lock_irqsave(&ctx->state_lock, flags);
 			obj->signaled = false;
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			cpos_object_put(obj);
 			return 0;
 		}
 		if (op.operation == CPOS_OP_SIGNAL && obj->type == CPOS_OBJECT_SEMAPHORE) {
-			spin_lock_irqsave(&obj->lock, flags);
+			spin_lock_irqsave(&ctx->state_lock, flags);
 			if (obj->count == obj->maximum) {
-				spin_unlock_irqrestore(&obj->lock, flags);
+				spin_unlock_irqrestore(&ctx->state_lock, flags);
 				cpos_object_put(obj);
 				return -EOVERFLOW;
 			}
 			obj->count++;
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			wake_up(&obj->waiters);
+			wake_up_all(&ctx->waiters);
 			cpos_object_put(obj);
 			return 0;
 		}
 		if (op.operation == CPOS_OP_RELEASE && obj->type == CPOS_OBJECT_MUTEX) {
 			struct task_struct *owner;
 
-			spin_lock_irqsave(&obj->lock, flags);
+			spin_lock_irqsave(&ctx->state_lock, flags);
 			if (obj->owner != current) {
-				spin_unlock_irqrestore(&obj->lock, flags);
+				spin_unlock_irqrestore(&ctx->state_lock, flags);
 				cpos_object_put(obj);
 				return -EPERM;
 			}
 			owner = obj->owner;
 			obj->owner = NULL;
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			put_task_struct(owner);
 			wake_up_all(&obj->waiters);
+			wake_up_all(&ctx->waiters);
 			cpos_object_put(obj);
 			return 0;
 		}
@@ -255,22 +406,22 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 	wait_again:
 		remaining = time_before(jiffies, deadline) ? deadline - jiffies : 0;
 		waited = wait_event_interruptible_timeout(obj->waiters, ({
-			spin_lock_irqsave(&obj->lock, flags);
+			spin_lock_irqsave(&ctx->state_lock, flags);
 			ready = obj->removed ||
 				(obj->type == CPOS_OBJECT_EVENT ? obj->signaled :
 				 obj->type == CPOS_OBJECT_MUTEX ? !obj->owner : obj->count != 0);
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			ready;
 		}), remaining);
 		if (waited < 0) {
 			cpos_object_put(obj);
 			return waited;
 		}
-		spin_lock_irqsave(&obj->lock, flags);
+		spin_lock_irqsave(&ctx->state_lock, flags);
 		ready = !obj->removed && (obj->type == CPOS_OBJECT_EVENT ? obj->signaled :
 			obj->type == CPOS_OBJECT_MUTEX ? !obj->owner : obj->count != 0);
 		if (obj->removed) {
-			spin_unlock_irqrestore(&obj->lock, flags);
+			spin_unlock_irqrestore(&ctx->state_lock, flags);
 			cpos_object_put(obj);
 			return -EIDRM;
 		}
@@ -282,7 +433,7 @@ static long cpos_object_ioctl(struct cpos_file *ctx, unsigned int cmd,
 				obj->count--;
 			}
 		}
-		spin_unlock_irqrestore(&obj->lock, flags);
+		spin_unlock_irqrestore(&ctx->state_lock, flags);
 		if (!ready && waited > 0)
 			goto wait_again;
 		cpos_object_put(obj);
@@ -304,9 +455,13 @@ static long cpos_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	if (cmd == CPOS_IOC_OBJECT_CREATE || cmd == CPOS_IOC_OBJECT_DROP ||
 	    cmd == CPOS_IOC_OBJECT_OP) {
+		if (!uid_eq(current_fsuid(), ctx->owner))
+			return -EACCES;
 		ret = cpos_object_ioctl(ctx, cmd, user);
 		return ret;
 	}
+	if (cmd == CPOS_IOC_WAIT_SET)
+		return cpos_wait_set_ioctl(ctx, user);
 
 	if (cmd == CPOS_IOC_QUERY) {
 		struct cpos_abi_info info;
