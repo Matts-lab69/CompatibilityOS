@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include "../cpos_abi.h"
 
@@ -74,6 +75,35 @@ static void check_wait_sets(int fd)
 	if (event) drop_object(fd, event);
 }
 
+static void check_file_reference(int fd)
+{
+	static const char payload[] = "CPOS guest file reference";
+	char contents[sizeof(payload)] = {0};
+	struct cpos_fd_import req = {.size = sizeof(req)};
+	struct cpos_object_op op = {.size = sizeof(op), .operation = CPOS_OP_FD_GET};
+	int original, received, flags;
+
+	original = memfd_create("cpos-fd-fixture", MFD_CLOEXEC);
+	CHECK(original >= 0);
+	if (original < 0) return;
+	CHECK(write(original, payload, sizeof(payload)) == sizeof(payload));
+	CHECK(lseek(original, 0, SEEK_SET) == 0);
+	req.fd = original;
+	CHECK(ioctl(fd, CPOS_IOC_FD_IMPORT, &req) == 0 && req.handle);
+	CHECK(close(original) == 0);
+	if (!req.handle) return;
+	op.handle = req.handle;
+	received = ioctl(fd, CPOS_IOC_OBJECT_OP, &op);
+	CHECK(received >= 0);
+	drop_object(fd, req.handle);
+	if (received < 0) return;
+	flags = fcntl(received, F_GETFD);
+	CHECK(flags >= 0 && (flags & FD_CLOEXEC));
+	CHECK(read(received, contents, sizeof(contents)) == sizeof(contents));
+	CHECK(memcmp(contents, payload, sizeof(payload)) == 0);
+	CHECK(close(received) == 0);
+}
+
 int main(void)
 {
 	struct cpos_abi_info info = { .size = sizeof(info) };
@@ -115,6 +145,7 @@ int main(void)
 		drop_object(fd, handle);
 	} else CHECK(0 && "create mutex");
 	check_wait_sets(fd);
+	check_file_reference(fd);
 	CHECK(close(fd) == 0);
 	if (failures)
 		fprintf(stderr, "%d functional assertion(s) failed\n", failures);
