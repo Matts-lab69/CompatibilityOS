@@ -1,0 +1,26 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+# PID 1 inside the disposable QEMU guest only.
+PATH=/bin:/sbin
+export PATH
+mount -t proc proc /proc || exit 1
+mount -t sysfs sysfs /sys || exit 1
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+mknod /dev/console c 5 1 2>/dev/null || true
+exec </dev/console >/dev/console 2>&1
+
+fail() {
+	echo "GUEST TEST FAILURE: $*"
+	/sbin/poweroff -f
+	exit 1
+}
+
+echo "CPOS guest ioctl tests: isolated TCG initramfs environment"
+/sbin/insmod /cpos.ko || fail "module insertion failed in guest"
+[ -c /dev/compat ] || fail "/dev/compat was not registered"
+/ioctl_functional || fail "functional ioctl assertions failed"
+/message_test --event || fail "event-backed messaging assertions failed"
+/sbin/rmmod cpos || fail "guest module unload failed"
+echo "GUEST TEST PASS"
+/sbin/poweroff -f
+fail "poweroff returned"

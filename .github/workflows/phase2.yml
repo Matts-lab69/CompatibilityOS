@@ -35,14 +35,15 @@ jobs:
   kernel:
     runs-on: ubuntu-24.04
     container: ubuntu:24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Install container build dependencies
         timeout-minutes: 24
         run: |
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
-            gcc make libc6-dev ca-certificates git linux-headers-generic
+            gcc make libc6-dev ca-certificates git linux-headers-generic linux-image-generic \
+            qemu-system-x86 busybox-static cpio
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
@@ -53,5 +54,13 @@ jobs:
           test -n "$headers"
           make -C "$headers" M="$PWD/cpos-kernel" modules
           test -s 'cpos-kernel/cpos.ko'
+          printf 'CPOS_GUEST_KERNEL=/boot/vmlinuz-%s\n' "${headers##*/linux-headers-}" >> "$GITHUB_ENV"
       - name: Check ABI v1 and v2 layouts without opening the device
         run: cc -std=c11 -Wall -Wextra -Werror -fsyntax-only 'cpos-kernel/abi_layout.c'
+      - name: Exercise functional ioctls inside a disposable guest
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -static 'cpos-kernel/tests/ioctl_functional.c' -o "$RUNNER_TEMP/ioctl-functional"
+          cc -std=c11 -Wall -Wextra -Werror -static -pthread 'cpos-peload/message.c' 'cpos-peload/test_message.c' -o "$RUNNER_TEMP/message-test"
+          bash 'cpos-kernel/tests/run-qemu.sh' "$CPOS_GUEST_KERNEL" 'cpos-kernel/cpos.ko' "$RUNNER_TEMP/ioctl-functional" '/bin/busybox' "$RUNNER_TEMP/message-test"
