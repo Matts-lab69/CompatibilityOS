@@ -1,0 +1,4 @@
+; SPDX-License-Identifier: MIT
+LIBRARY cposhello.dll
+EXPORTS
+    CposPeHello

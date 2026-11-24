@@ -14,6 +14,10 @@ check-exec:
 	./test_exec
 	x86_64-w64-mingw32-gcc -Wall -Wextra -Werror -nostdlib -Wl,--entry,fixture_entry,--image-base,0x140000000 fixture.c -o fixture.exe
 	timeout 10 ./test_exec --execute-fixture fixture.exe
+	x86_64-w64-mingw32-dlltool -d fixture_import.def -l fixture_import.lib -D cposhello.dll
+	x86_64-w64-mingw32-gcc -Wall -Wextra -Werror -nostdlib -Wl,--entry,fixture_entry,--image-base,0x140000000 fixture_import.c fixture_import.lib -o fixture_import.exe
+	timeout 10 ./test_exec --execute-import-fixture fixture_import.exe > 'fixture_import.out'
+	printf 'CPOS PE hello\n' | cmp - 'fixture_import.out'
 
 fuzz: check
 	$(CC) $(CFLAGS) -std=c11 -Wall -Wextra -Werror $(SANITIZERS) -fsanitize=fuzzer pe.c fuzz_pe.c -o fuzz_pe
@@ -23,4 +27,4 @@ fuzz: check
 	bash -o pipefail -c './fuzz_pe -runs=$(FUZZ_ITERATIONS) -max_len=1048576 -timeout=2 -print_final_stats=1 .corpus 2>&1 | tee .fuzz.log && grep -Ex "stat::number_of_executed_units: [1-9][0-9]{7,}" .fuzz.log'
 
 clean:
-	rm -f test_pe test_exec fuzz_pe fixture.exe .fuzz.log
+	rm -f test_pe test_exec fuzz_pe fixture.exe fixture_import.exe fixture_import.lib fixture_import.out .fuzz.log

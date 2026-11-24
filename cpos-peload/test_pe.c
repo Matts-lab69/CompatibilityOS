@@ -42,20 +42,35 @@ static void make_tables(uint8_t *bytes)
     w32(raw + 0xc0, 0x1000); w32(raw + 0xc4, 12); w16(raw + 0xc8, 0xa010);
 }
 
+#if defined(CPOS_TEST_EXEC) && defined(__linux__) && defined(__x86_64__)
+static void __attribute__((ms_abi)) fixture_hello(void)
+{
+    puts("CPOS PE hello");
+}
+#endif
+
 int main(int argc, char **argv)
 {
     uint8_t bytes[1024]; struct pe_image im; make_pe(bytes);
     make_tables(bytes);
     assert(pe_parse(bytes, sizeof(bytes), &im) == PE_OK);
 #ifdef CPOS_TEST_EXEC
-    if (argc == 3 && !strcmp(argv[1], "--execute-fixture")) {
+    if (argc == 3 && (!strcmp(argv[1], "--execute-fixture") ||
+                      !strcmp(argv[1], "--execute-import-fixture"))) {
         uint8_t fixture[65536];
         FILE *in = fopen(argv[2], "rb");
         if (!in) return 1;
         size_t n = fread(fixture, 1, sizeof(fixture), in);
         int failed = ferror(in) || !feof(in);
         if (fclose(in) || failed) return 1;
-        const struct pe_exec_options options = {NULL, 0, 1};
+        const int import_fixture = !strcmp(argv[1], "--execute-import-fixture");
+#if defined(__linux__) && defined(__x86_64__)
+        struct pe_import allowed = {"cposhello.dll", "CposPeHello", (void *)fixture_hello};
+#else
+        struct pe_import allowed = {0};
+#endif
+        const struct pe_exec_options options = {import_fixture ? &allowed : NULL,
+                                                import_fixture ? 1 : 0, 1};
 #if defined(__linux__) && defined(__x86_64__)
         uintptr_t original_gs = 0, restored_gs = 0;
         if (syscall(SYS_arch_prctl, ARCH_GET_GS, &original_gs) != 0) return 1;
@@ -65,6 +80,7 @@ int main(int argc, char **argv)
         if (syscall(SYS_arch_prctl, ARCH_GET_GS, &restored_gs) != 0 ||
             restored_gs != original_gs) return 1;
 #endif
+        if (import_fixture) return status != PE_OK;
         printf("MinGW fixture entry: %d\n", status);
         return status != PE_OK;
     }
