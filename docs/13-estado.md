@@ -7,6 +7,10 @@
 
 **SIN ANALIZAR:** the current Wine CI result for `30fd688`; the last recorded Explorer error is `CloseDesktop failed: 6` before that correction. Do not infer a fixed runtime from the source edit. Historical green runs below are evidence only for their own revisions.
 
+**HECHO VERIFICADO — local checks at `87dc4f5`:** ShellCheck 0.11.0, `git diff --check`, GCC syntax-only with `-Wall -Wextra -Werror` for the Linux userspace loader, queue and ABI probes, `xmllint` and `desktop-file-validate` passed. The repository had 53 GiB available on the home filesystem. Tracked non-Markdown physical lines: `patches/` 422, `scripts/` 197, `cpos-peload/` 1,077, `cpos-kernel/` 990 and `tests/` 1,127 (3,813 total); 920,346 apparent bytes including `.git`, 3.4 MiB allocated.
+
+**SIN ANALIZAR — final CI:** the manual Wine workflow is wired to call static and experimental jobs independently; the existing installer workflow follows a successful attested bundle. This revision has not been dispatched. Kernel named objects and a general-purpose PE runtime are not complete. `CPOS_IOC_WAIT_SET` and restricted `CPOS_IOC_FD_IMPORT` have written guest probes but do not yet have runtime evidence.
+
 ## Execution inventory — 2026-11-24
 
 | Block | Status | Verified scope and gaps |
