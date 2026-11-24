@@ -34,3 +34,5 @@ The experimental `/dev/compat` device has bounded per-open handle tables and no 
 - **SIN ANALIZAR — replacing wineserver:** object namespaces and access control, process/thread lifetimes, handle inheritance/duplication, abandoned mutexes, multi-object waits and APCs, async I/O, window ownership, registry state, and compatibility with Wine's client protocol.
 
 **HECHO VERIFICADO — historical callback-only revision:** [CI at `c69043e`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45186319328) passed the process-attach callback fixture before static TLS was added.
+
+**HECHO VERIFICADO:** `15bb1de`, [run 45343548109](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45343548109), also passed a separate MinGW fixture calling an allowlisted import. CI compared the exact output bytes against `CPOS PE hello` plus a newline; this does not exercise Windows DLL loading.

@@ -18,6 +18,8 @@
 
 **HECHO VERIFICADO — static TLS corrections:** [45340397117](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340397117) reported `error: call to undeclared function 'syscall'`; `02c8f0c` exposes the declaration. [45340517416](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340517416) reported `error: cast to pointer from integer of different size [-Werror=int-to-pointer-cast]`; `407281a` corrected the cast. [45340644788](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340644788) then reported `AddressSanitizer: SEGV on unknown address 0x000000000010`; `bd46bc8` fixed the TLS array element width as well. The [next full Phase 2 run](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45340819917) passed without disabling TLS, sanitizers, or `-Werror`.
 
+**HECHO VERIFICADO — import fixture:** [45342788432](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45342788432) built the fixture but exited at `Makefile:19: check-exec` with `Error 1` before comparing output. `15bb1de` added a DIR64 relocation to permit loading away from the preferred base. [45343548109](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45343548109) passed the byte-for-byte comparison of `CPOS PE hello` and 10,000,000 parser fuzz iterations. The import resolves to an allowlisted host callback; no DLL is loaded.
+
 **HECHO VERIFICADO — snapshot:** `c59b2a9`, 2026-11-23. HECHO means the specified deliverable passed CI; green checks on a subset do not close a partial milestone. NO INICIADO would mean no deliverable exists for the milestone, not merely that one of its requirements is missing.
 
 | Milestone | Status | Evidence and remaining work |
