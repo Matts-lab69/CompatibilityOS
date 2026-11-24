@@ -8,10 +8,8 @@ desktop=0
 app=''
 staged=''
 
-# Invoked by the EXIT trap.
-# shellcheck disable=SC2317
 desktop_error_notice() {
-    local status=$?
+    local status=$1
     local message='CompatibilityOS could not run the application.'
     if [[ -n $staged ]]; then rm -rf -- "$staged" || :; fi
     (( desktop && ! dry && status != 0 )) || return "$status"
@@ -27,7 +25,7 @@ desktop_error_notice() {
     fi
     return "$status"
 }
-trap desktop_error_notice EXIT
+trap 'desktop_error_notice "$?"' EXIT
 
 while (( $# )); do
     case "$1" in
@@ -189,4 +187,5 @@ else
     wait_status=$?
     (( status != 0 )) || status=$wait_status
 fi
-exit "$status"
+trap - EXIT
+desktop_error_notice "$status" || exit "$status"
