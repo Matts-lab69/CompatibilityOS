@@ -60,9 +60,8 @@ type, and type-specific initial/max values. Event uses initial 0 or 1 and max
 0; it is manual-reset/latched (`SIGNAL` sets, `RELEASE` resets). Mutex uses
 initial 0 and max 0; successful wait acquires it and only the owning Linux task
 may `RELEASE` it. Semaphore requires max > 0 and initial <= max; `SIGNAL`
-increments and wait decrements. `FD_REF` and `FD_GET` are reserved and return
-`EOPNOTSUPP`; descriptor transfer needs LSM authorization and a lifetime
-model that prevents indirect reference cycles. `CPOS_IOC_OBJECT_OP` uses
+increments and wait decrements. Generic object creation still rejects
+`FD_REF`; use the separate descriptor import command below. `CPOS_IOC_OBJECT_OP` uses
 `handle` and operation; `WAIT` accepts timeout milliseconds (zero polls, max
 24 hours), interrupted waits return `EINTR`, timed-out waits `ETIMEDOUT`, and a
 waiter whose object is dropped returns `EIDRM`. `SIGNAL` applies to event and
@@ -88,6 +87,16 @@ fields. `CPOS_WAIT_ANY` returns the input index of the first available object;
 failure. Manual-reset events stay signaled. A dropped object wakes the waiter
 and returns `EIDRM`. Recursive or abandoned mutexes and Windows APC semantics
 are not implemented. **SIN ANALIZAR:** execution of the new ioctl in a guest.
+
+`CPOS_IOC_FD_IMPORT` (`_IOWR(0xc7, 0x14, struct cpos_fd_import)`) takes a
+32-byte input with an open descriptor and zero handle/reserved fields. It
+returns a handle in the same open table. Only regular tmpfs/ramfs files are
+accepted; `O_PATH`, devices and other filesystem types are excluded. A
+`CPOS_OP_FD_GET` operation on that handle returns a close-on-exec descriptor
+through Linux `receive_fd`, which checks LSM policy. Dropping the handle
+releases the retained file reference, not any descriptor already returned.
+File references cannot participate in waits or be looked up by another open.
+**SIN ANALIZAR:** guest execution and the kernel export on the CI image.
 
 The present namespace is per-open-file, which is stricter than per-user
 isolation and prevents sharing even between two opens by the same user. There
