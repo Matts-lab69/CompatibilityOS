@@ -30,6 +30,14 @@ done
 umask 077
 if [[ $op == uninstall && ! -d $root ]]; then exit 0; fi
 [[ ! -L $root && ! -L $state && ! -L $defaults ]] || fail 'refusing linked installer state'
+if [[ -e $state ]]; then
+    [[ -d $state && -O $state ]] || fail 'refusing unowned installer registration'
+    for file in before after snapshot desktop mime; do
+        [[ ! -L $state/$file ]] || fail "refusing linked installer registration: $file"
+        [[ ! -e $state/$file || ( -f $state/$file && -O $state/$file ) ]] ||
+            fail "refusing non-regular or unowned installer registration: $file"
+    done
+fi
 mkdir -p -- "$root"
 [[ -O $root && ! -L $root/.lock && ! -L $root/versions ]] || fail 'refusing unowned or linked installer data'
 exec 9>"$root/.lock"
@@ -44,7 +52,7 @@ if [[ $op == uninstall ]]; then
         fi
         for item in 'desktop' 'mime'; do
             if [[ $item == desktop ]]; then target=$desktop; else target=$mime; fi
-            if cmp -s -- "$target" "$state/$item"; then rm -- "$target"; fi
+            if [[ -f $target && ! -L $target && -O $target ]] && cmp -s -- "$target" "$state/$item"; then rm -- "$target"; fi
         done
         refresh
         rm -rf -- "$state"
@@ -62,6 +70,7 @@ version="$root/versions/$sha"
 if [[ -L $root/current && $(readlink -- "$root/current") == "$version" && -f $state/after ]]; then exit 0; fi
 for path in "$desktop" "$mime"; do
     if [[ -e $path || -L $path ]]; then
+        [[ -f $path && ! -L $path && -O $path ]] || fail "refusing non-regular, linked or unowned association $path"
         if [[ $path == "$desktop" ]]; then item=desktop; else item=mime; fi
         cmp -s -- "$path" "$state/$item" || fail "refusing to overwrite $path"
     fi
