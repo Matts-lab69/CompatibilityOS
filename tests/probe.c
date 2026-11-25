@@ -99,6 +99,54 @@ static int services(void)
     return bad;
 }
 
+static int rpcss_com(void)
+{
+    static const CLSID shell_windows = {0x9ba05972,0xf6a8,0x11cf,{0xa4,0x42,0x00,0xa0,0xc9,0x0a,0x8f,0x39}};
+    static const IID dispatch_iid = {0x00020400,0x0000,0x0000,{0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
+    SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
+    SC_HANDLE rpc;
+    SERVICE_STATUS_PROCESS before, after;
+    DWORD needed;
+    IDispatch *object = NULL;
+    HRESULT hr;
+    int bad = 0;
+    if (!scm) { printf("OpenSCManagerW: %lu\n", GetLastError()); return 1; }
+    rpc = OpenServiceW(scm, L"RpcSs", SERVICE_QUERY_STATUS);
+    if (!rpc || !QueryServiceStatusEx(rpc, SC_STATUS_PROCESS_INFO, (BYTE *)&before,
+                                      sizeof(before), &needed)) {
+        printf("Cannot observe RpcSs before COM activation: %lu\n", GetLastError());
+        if (rpc) CloseServiceHandle(rpc);
+        CloseServiceHandle(scm);
+        return 1;
+    }
+    if (before.dwCurrentState != SERVICE_STOPPED) {
+        printf("RpcSs COM attribution unavailable: service already in state %lu\n", before.dwCurrentState);
+        CloseServiceHandle(rpc);
+        CloseServiceHandle(scm);
+        return 1;
+    }
+    hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    if (FAILED(hr)) { printf("CoInitializeEx failed: 0x%08lx\n", (unsigned long)hr); bad = 1; }
+    else {
+        hr = CoCreateInstance(&shell_windows, NULL, CLSCTX_LOCAL_SERVER,
+                              &dispatch_iid, (void **)&object);
+        if (SUCCEEDED(hr)) object->lpVtbl->Release(object);
+        else { printf("ShellWindows COM activation failed: 0x%08lx\n", (unsigned long)hr); bad = 1; }
+        CoUninitialize();
+    }
+    if (!QueryServiceStatusEx(rpc, SC_STATUS_PROCESS_INFO, (BYTE *)&after, sizeof(after), &needed)) {
+        printf("Cannot observe RpcSs after COM activation: %lu\n", GetLastError());
+        bad = 1;
+    } else if (after.dwCurrentState != SERVICE_RUNNING || before.dwCurrentState == after.dwCurrentState) {
+        printf("COM activation did not establish RpcSs running (before=%lu after=%lu)\n",
+               before.dwCurrentState, after.dwCurrentState);
+        bad = 1;
+    } else puts("COM activation transitioned RpcSs from stopped to running");
+    CloseServiceHandle(rpc);
+    CloseServiceHandle(scm);
+    return bad;
+}
+
 int main(int argc, char **argv)
 {
     const char *key = "Software\\CompatibilityOS\\ViewProbe";
@@ -110,6 +158,7 @@ int main(int argc, char **argv)
     if (argc > 1 && !strcmp(argv[1], "known-folders")) return known_folders();
     if (argc > 1 && !strcmp(argv[1], "writable-windows")) return writable_windows();
     if (argc > 1 && !strcmp(argv[1], "services")) return services();
+    if (argc > 1 && !strcmp(argv[1], "rpcss-com")) return rpcss_com();
     if (argc > 1 && !strcmp(argv[1], "path"))
     {
         file = CreateFileW(L"C:\\Windows\\Installer\\cpos-probe.txt", GENERIC_WRITE, 0, NULL,

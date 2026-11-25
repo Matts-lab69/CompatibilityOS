@@ -121,6 +121,11 @@ if (check_paths); then printf 'ok paths\n'; else report paths; fi
 if (check_known_folders); then printf 'ok known-folders\n'; else report known-folders; fi
 if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
+if timeout 90 "$runner" --app 'rpcss-com-fixture' -- "$exe64" 'rpcss-com'; then
+    printf 'ok rpcss-com\n'
+else
+    report rpcss-com
+fi
 fusion_dll="$CPOS_BUNDLE/wine/lib/wine/x86_64-windows/fusion.dll"
 font_file="$PWD/cpos-font-fixture.ttf"
 /usr/bin/python3 "$root/tests/make-font-fixture.py" "$font_file"
