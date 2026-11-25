@@ -9,6 +9,8 @@ Neither Wine, `cpos-run` nor the installer uses these EXPERIMENTAL components. C
 | Objects | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): file-local objects, atomic wait sets and restricted file references. | Named sharing, abandoned mutexes, access masks, inheritance and asynchronous I/O. |
 | Messages and ABI | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): versioned ioctl checks and synchronous owner-thread queue with guest event signaling. | Win32 message pumping, reentrancy, cross-process dispatch and Wine client protocol compatibility. |
 
+**SIN ANALIZAR — ntsync equivalence:** the [Linux 6.18 reference](https://docs.kernel.org/6.18/userspace-api/ntsync.html) supports explicit mutex abandonment, recursive ownership, and an optional alert object. The CompatibilityOS ABI has none of these and must not be presented as interchangeable. Its semaphore signal adds one, its wait timeout is relative, and duplicate handles are rejected in both wait-set modes. The guest checks cover acquisition and timeout without partial consumption, not equivalence under contention or owner death.
+
 ## Userspace and loader
 
 **HIPÓTESIS:** maintain process-local Windows handle tables that refer to Linux fds; scope named NT objects by user and do not accept a caller-supplied UID as authority. Broker policy, access masks, inheritance, duplication and namespace lifetime must be designed before exposing shared objects. For synchronous `SendMessage`, use a per-thread request queue and completion event; ntsync may signal both. Reentrancy, cancellation and thread exit are unresolved.
