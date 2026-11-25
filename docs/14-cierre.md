@@ -7,10 +7,10 @@ Evidence is revision-specific. The full [Wine CI][wine] and [installer CI][insta
 | --- | --- | --- |
 | A — Wine patches | HECHO | `f455f13` records that all six applied in order to `7298a818`. `083336c`: [build][build] and [smoke][wine] passed; path round trips and ephemeral sockets were exercised. Quiet Wine initialization retains error handling. |
 | B — Writable application routes | HECHO | `083336c`, [Xvfb][wine]: `ok paths` and `ok windows-writes` cover Installer, Temp, spool, Fonts, both assembly roots and WinSxS. |
-| C — Fonts | HECHO | `6fa11f2`, [Xvfb][closure-test]: absent before installation, copied and registered, enumerated in a fresh session without `AddFontResource`, and cleaned up (`ok persistent-font`). The job failed independently on the COM probe. |
+| C — Fonts | PARCIAL (green probe) | `6fa11f2`, [Xvfb][closure-test]: absent before installation, copied and registered, enumerated in a fresh session without `AddFontResource`, and cleaned up (`ok persistent-font`). The overall job failed independently on COM; awaiting a green run for closure. |
 | D — Printing | HECHO | `b63b9cc`, [Xvfb][wine]: writable spool and exact 66-byte RAW job to a disposable CUPS queue. |
 | E — .NET/GAC | HECHO | `b995273`, [Xvfb][wine]: signed synthetic assembly installed, enumerated through Fusion and removed. No managed-runtime activation claim. |
-| F — Services | PARCIAL | `30fd688`, [Xvfb][wine]: implicit Explorer and cleanup passed, as did PlugPlay and SCM-requested RpcSs. The separate COM probe in [closure CI][closure-test] observed RpcSs transition from stopped to running, but failed activation with `ShellWindows COM activation failed: 0x80040152` (`REGDB_E_KEYMISSING`). `02a2365` uses an explicitly registered synthetic local server; activation and cleanup await [follow-up CI][com-retry]. |
+| F — Services | PARCIAL | `30fd688`, [Xvfb][wine]: implicit Explorer and cleanup passed, as did PlugPlay and SCM-requested RpcSs. [Closure CI][closure-test] observed RpcSs transition from stopped to running, but ShellWindows activation failed. `62c2191` gives the synthetic COM server an absolute DOS path; activation and cleanup await [follow-up CI][com-retry]. |
 | G — Per-app registry | HECHO | `083336c`, [static][static] and [Xvfb][wine]: versioned seed, migration marker and WoW64 registry probes. |
 | H — Runner | PARCIAL | `083336c`, [static][static] and [Xvfb][wine]: write-free dry run, recipe checks, EXE, MSI and logged wineserver fallback. Active ntsync is unverified; fsync/esync are excluded as recorded in [status](13-estado.md). |
 | I — Desktop | PARCIAL | `083336c`, [static][static] and [Xvfb][wine]: desktop/MIME validation, log and notification tests; [binfmt_misc](../packaging/binfmt/README.md) is documentation only. Actual COSMIC double-click is unverified. |
@@ -45,7 +45,7 @@ Evidence is revision-specific. The full [Wine CI][wine] and [installer CI][insta
 [closure]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888
 [closure-static]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619297
 [closure-test]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139198575163
-[com-retry]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45614430285
+[com-retry]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45637774717
 [build]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563021512
 [static]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563021880
 [pe]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022265
