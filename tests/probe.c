@@ -133,7 +133,7 @@ static int rpcss_com(void)
     module_length = GetModuleFileNameW(NULL, module, MAX_PATH);
     if (!module_length || module_length >= MAX_PATH ||
         swprintf(command, sizeof(command) / sizeof(command[0]), L"\"%ls\" com-server", module) < 0 ||
-        RegCreateKeyExW(HKEY_CURRENT_USER, clsid_path, 0, NULL, 0, KEY_WRITE, NULL, &key, &disposition) != ERROR_SUCCESS ||
+        RegCreateKeyExW(HKEY_LOCAL_MACHINE, clsid_path, 0, NULL, 0, KEY_WRITE, NULL, &key, &disposition) != ERROR_SUCCESS ||
         disposition != REG_CREATED_NEW_KEY) {
         puts("Could not create a new ephemeral COM fixture registration");
         bad = 1;
@@ -178,7 +178,7 @@ static int rpcss_com(void)
         bad = 1;
     } else if (!bad) puts("COM activation transitioned RpcSs from stopped to running");
     if (initialized) CoUninitialize();
-    if (attempted && RegDeleteTreeW(HKEY_CURRENT_USER, clsid_path) != ERROR_SUCCESS) {
+    if (attempted && RegDeleteTreeW(HKEY_LOCAL_MACHINE, clsid_path) != ERROR_SUCCESS) {
         puts("Could not remove ephemeral COM fixture registration");
         bad = 1;
     }

@@ -20,6 +20,8 @@ Evidence is revision-specific. The full [Wine CI][wine] and [installer CI][insta
 
 ## Experimental Phase 2
 
+**HECHO VERIFICADO — COM follow-up:** [run 45614430285](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45614430285/job/139227228315) reported `Synthetic COM activation failed: 0x80040154` (`REGDB_E_CLASSNOTREG`), while persistent fonts and Explorer passed. **HIPÓTESIS:** Wine's pinned [COM class lookup](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/combase/combase.c) uses the machine classes in the disposable Wine prefix, not the fixture's HKCU key. The next probe registers and removes the class in that prefix's HKLM. No host registry or system setting is changed.
+
 - **PARCIAL:** [PE job][pe] passed synthetic TLS, relocation and import fixtures plus 10 million fuzz iterations; general DLL loading, forwarders and delay imports are not verified.
 - **PARCIAL:** [QEMU job][kernel] passed per-open objects, wait sets and restricted file references; named objects and abandonment are not covered.
 - **HECHO VERIFICADO:** `083336c`, [QEMU job][kernel]: optional event-backed messaging and versioned ioctl smoke tests. This does not substitute for wineserver. See [Phase 2](12-fase2.md).
