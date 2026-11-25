@@ -13,8 +13,8 @@ printf '%s\n' "XDG_DOCUMENTS_DIR=\"\$HOME/My Documents\"" "XDG_DESKTOP_DIR=\"\$H
     "XDG_DOWNLOAD_DIR=\"\$HOME/My Downloads\"" > "$XDG_CONFIG_HOME/user-dirs.dirs"
 (cd -- "$temp/out"; sha256sum --check 'SHA256SUMS'; tar -xzf 'compatibilityos.tar.gz' -C "$CPOS_BUNDLE")
 cd -- "$temp/fixtures"
-x86_64-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -o 'probe64.exe'
-i686-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -o 'probe32.exe'
+x86_64-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -luuid -o 'probe64.exe'
+i686-w64-mingw32-gcc "$root/tests/probe.c" -ladvapi32 -lshell32 -lole32 -luuid -o 'probe32.exe'
 x86_64-w64-mingw32-gcc "$root/tests/windows-subsystems.c" -lgdi32 -lsetupapi -lwinspool -o 'subsystems.exe'
 cp -- "$root/tests/probe.wxs" 'probe.wxs'
 wixl -o 'probe.msi' 'probe.wxs'
