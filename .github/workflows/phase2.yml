@@ -21,13 +21,14 @@ jobs:
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
             ca-certificates git make clang libclang-rt-dev gcc-mingw-w64-x86-64-posix python3
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: pe-checkout
         with:
           persist-credentials: false
-      - name: Compile, unit test and fuzz the non-executable PE staging loader
-        run: |
-          make -C 'cpos-peload' CC=clang check
-          make -C 'cpos-peload' CC=clang check-exec
-          make -C 'cpos-peload' CC=clang fuzz
+      - name: Build and run repository-owned MinGW execution fixtures
+        run: make -C 'cpos-peload' CC=clang check-exec
+      - name: Unit test and fuzz the non-executable PE staging loader
+        if: ${{ !cancelled() && steps.pe-checkout.outcome == 'success' }}
+        run: make -C 'cpos-peload' CC=clang fuzz
       - name: Check synchronous thread messaging
         run: |
           clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread \
@@ -56,7 +57,7 @@ jobs:
           make -C "$headers" M="$PWD/cpos-kernel" modules
           test -s 'cpos-kernel/cpos.ko'
           printf 'CPOS_GUEST_KERNEL=/boot/vmlinuz-%s\n' "${headers##*/linux-headers-}" >> "$GITHUB_ENV"
-      - name: Check ABI v1 and v2 layouts without opening the device
+      - name: Check ABI v1, v2 and v3 layouts without opening the device
         run: cc -std=c11 -Wall -Wextra -Werror -fsyntax-only 'cpos-kernel/abi_layout.c'
       - name: Exercise functional ioctls inside a disposable guest
         timeout-minutes: 8

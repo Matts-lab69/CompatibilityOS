@@ -34,6 +34,8 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 
 **HECHO VERIFICADO — historical scope:** the [experimental PE][closure-pe] and [kernel][closure-kernel] jobs passed at `6fa11f2`; the same workflow failed separately at the Wine COM probe. Those green jobs do not verify the expanded [Phase 2 closure checks](12-fase2.md#closure-checks-for-the-next-revision).
 
+**SIN ANALIZAR — expanded validation:** the expanded guest tests must confirm named-object lifetime across opens, abandonment reporting and shared semaphore bounds. The PE fixture must distinguish first-call delay binding from merely publishing a delay-import directory. Neither is covered by the historical runs above.
+
 **SIN ANALIZAR:** active ntsync, real COSMIC, performance and crash rates. No baseline was run.
 
 ## CachyOS USB handoff

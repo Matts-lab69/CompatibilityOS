@@ -9,7 +9,7 @@ Neither Wine, `cpos-run` nor the installer uses these EXPERIMENTAL components. C
 | Objects | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): file-local objects, atomic wait sets and restricted file references. | Named sharing, abandoned mutexes, access masks, inheritance and asynchronous I/O. |
 | Messages and ABI | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): versioned ioctl checks and synchronous owner-thread queue with guest event signaling. | Win32 message pumping, reentrancy, cross-process dispatch and Wine client protocol compatibility. |
 
-**SIN ANALIZAR — ntsync equivalence:** the [Linux 6.18 reference](https://docs.kernel.org/6.18/userspace-api/ntsync.html) supports explicit mutex abandonment, recursive ownership, and an optional alert object. The CompatibilityOS ABI has none of these and must not be presented as interchangeable. Its semaphore signal adds one, its wait timeout is relative, and duplicate handles are rejected in both wait-set modes. The guest checks cover acquisition and timeout without partial consumption, not equivalence under contention or owner death.
+**SIN ANALIZAR — ntsync equivalence:** the [Linux 6.18 reference](https://docs.kernel.org/6.18/userspace-api/ntsync.html) supports explicit mutex abandonment, recursive ownership, and an optional alert object. The verified v2 configuration above has none of these. Its semaphore signal adds one, its wait timeout is relative, and duplicate handles are rejected in both wait-set modes. The historical guest checks cover acquisition and timeout without partial consumption, not equivalence under contention or owner death.
 
 ## Userspace and loader
 
@@ -27,7 +27,7 @@ The first loader milestone validates x86-64 PE32+ layout, sections, relocation a
 
 ## Kernel boundary
 
-The experimental `/dev/compat` device has bounded per-open handle tables and no cross-user object namespace. See the [versioned ABI](../cpos-kernel/ABI.md) for supported requests, layouts, errors and access rules. Shared NT objects and cross-process signaling require a separate design and review.
+The experimental `/dev/compat` device has bounded per-open handle tables and no cross-user object namespace. See the [versioned ABI](../cpos-kernel/ABI.md) for requests, layouts, errors and access rules. Sharing named synchronization state does not imply support for arbitrary NT objects, cross-user signaling or transferring handles between opens.
 
 **HECHO VERIFICADO:** [run 45147978579](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45147978579) linked `cpos.ko` in the Ubuntu container and compiled the userspace ABI v1 layout assertions. Nothing loaded the module or opened the device. Earlier checkout failed because the minimal container lacked CA certificates; the corrected run installed the CA bundle without disabling TLS verification.
 
@@ -37,9 +37,13 @@ The experimental `/dev/compat` device has bounded per-open handle tables and no 
 
 ### Closure checks for the next revision
 
-- The PE execution job must build its own MinGW fixtures and check direct DLL imports, forwarded exports, delay imports, and DLL attach/detach order. Fuzzing must remain non-executable and complete at least 10,000,000 iterations independently of the execution fixtures.
+- The PE execution job must build its own MinGW fixtures and check direct DLL imports, forwarded exports, delay imports, and DLL attach/detach order. A delay-import directory alone does not prove lazy binding: verify that the slot is unresolved before the first call, that the first call reaches the expected fixture export, and that a second call reuses the binding. Fuzzing must remain non-executable and complete at least 10,000,000 iterations independently of the execution fixtures.
 - The guest job must exercise independent opens, name and handle lifetime, mutex abandonment, semaphore bounds, and atomic waits without loading the module on the runner host. ABI v1 and v2 layout and behavior checks remain mandatory.
 - **SIN ANALIZAR:** neither historical job success below nor successful compilation alone verifies this expanded scope. Record the tested commit and the jobs that actually ran before marking it verified.
+
+**Pending CI — v3 synchronization scope:** named objects share state between independent opens in the same user namespace and filesystem UID; handles remain local to each open. Named mutex abandonment is tied to dropping or closing the acquiring binding, not to task exit while that binding remains open. A single wait reports `EOWNERDEAD` after acquiring the mutex; the v3 wait set reports abandonment by input index. This is not equivalent to ntsync's explicit mutex-kill operation or recursive ownership.
+
+**Pending CI — DLL fixture scope:** the loader accepts only explicitly supplied fixture modules and does not search for DLLs. The MinGW checks exercise ordinary imports, a forwarded export and dependency-first attach. The delay fixture checks the import slot before and after the first call and verifies that a second call does not resolve it again. The module itself is initialized before the first call; this is not lazy module loading or a general Windows loader.
 
 - **HECHO VERIFICADO:** [run 45342439841](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45342439841) passed the MinGW fixture (one static TLS slot, a minimal TEB and PEB exposing the mapped ImageBase, a process-attach callback, and restoration of host GS), 10,000,000 parser fuzz iterations, and the guest ioctl and messaging jobs. The loader attempts the preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, and resolves only allowlisted fixture imports. It is not a sandbox. General DLL loading and process/thread initialization remain absent.
 - **HECHO VERIFICADO:** The [final guest job](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465) passed ABI layout checks and functional tests for v1 tokens, v2 per-open objects, wait sets and restricted regular-file references. Cross-open descriptor sharing and ntsync integration are not implemented.
