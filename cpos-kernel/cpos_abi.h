@@ -10,6 +10,7 @@
 #define CPOS_ABI_VERSION_EXPERIMENTAL 2
 #define CPOS_MAX_OBJECTS 256
 #define CPOS_MAX_WAIT_HANDLES 64
+#define CPOS_NAMED_NAME_MAX 64
 
 struct cpos_abi_info {
 	__u32 size;
@@ -62,8 +63,39 @@ struct cpos_wait_set {
 	__aligned_u64 reserved[2];
 };
 
+/* Additive v3 named-object binding request; name is ASCII, NUL-terminated. */
+struct cpos_named_object_request {
+	__u32 size;
+	__u32 version;
+	__u32 action;
+	__u32 type;
+	__u32 initial_value;
+	__u32 maximum_value;
+	__aligned_u64 handle;
+	char name[CPOS_NAMED_NAME_MAX];
+};
+
+struct cpos_wait_set_v3 {
+	__u32 size;
+	__u32 version;
+	__u32 mode;
+	__u32 count;
+	__u32 timeout_ms;
+	__u32 reserved0;
+	__aligned_u64 handles[CPOS_MAX_WAIT_HANDLES];
+	__aligned_u64 reserved[2];
+	__u32 result_index;
+	__u32 reserved1;
+	__aligned_u64 abandoned_mask;
+};
+
 #define CPOS_WAIT_ANY 1
 #define CPOS_WAIT_ALL 2
+
+#define CPOS_ABI_VERSION_NAMED 3
+#define CPOS_ABI_VERSION_WAIT_SET 3
+#define CPOS_NAMED_CREATE_EXCLUSIVE 1
+#define CPOS_NAMED_OPEN_EXISTING 2
 
 #define CPOS_OBJECT_EVENT 1
 #define CPOS_OBJECT_MUTEX 2
@@ -80,6 +112,8 @@ struct cpos_wait_set {
 #define CPOS_IOC_OBJECT_OP _IOWR(CPOS_IOC_MAGIC, 0x12, struct cpos_object_op)
 #define CPOS_IOC_WAIT_SET _IOW(CPOS_IOC_MAGIC, 0x13, struct cpos_wait_set)
 #define CPOS_IOC_FD_IMPORT _IOWR(CPOS_IOC_MAGIC, 0x14, struct cpos_fd_import)
+#define CPOS_IOC_NAMED_OBJECT _IOWR(CPOS_IOC_MAGIC, 0x15, struct cpos_named_object_request)
+#define CPOS_IOC_WAIT_SET_V3 _IOWR(CPOS_IOC_MAGIC, 0x16, struct cpos_wait_set_v3)
 
 #define CPOS_IOC_MAGIC 0xc7
 #define CPOS_IOC_QUERY _IOWR(CPOS_IOC_MAGIC, 0x00, struct cpos_abi_info)

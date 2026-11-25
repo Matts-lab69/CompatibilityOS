@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Disposable QEMU ioctl functional tests
 
-These tests exercise only the documented successful event, semaphore, mutex,
-and ABI query behavior. They do not probe malformed inputs, race conditions,
-or unsupported operations.
+These tests exercise documented v1/v2 behavior, named cross-open sharing,
+named-mutex abandonment and wait-set atomicity, plus selected contract errors.
+They are functional tests, not race stress tests or security probes.
 
 The runner accepts a kernel, a module built for that exact guest kernel, and a
 static userspace test executable. It packages those artifacts into a temporary
