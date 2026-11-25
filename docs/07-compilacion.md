@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Wine build and test plan
 
 **VERIFIED FACT.** Gentoo's [`wine.eclass` at `9d05103`:43–75,348–355](https://github.com/gentoo/gentoo/blob/9d05103/eclass/wine.eclass#L43-L75) separates Linux ABI selection from cross-compiling PE targets with new WoW64 and emits `--enable-archs` in the new mode ([lines 348–355](https://github.com/gentoo/gentoo/blob/9d05103/eclass/wine.eclass#L348-L355)). The [Wine 11.20 ebuild](https://github.com/gentoo/gentoo/blob/9d05103/app-emulation/wine-vanilla/wine-vanilla-11.20.ebuild#L69-L90) lists X11, PulseAudio, Vulkan and FreeType dependencies subject to feature flags; [lines 124–136](https://github.com/gentoo/gentoo/blob/9d05103/app-emulation/wine-vanilla/wine-vanilla-11.20.ebuild#L124-L136) list Linux headers, Bison, Flex, pkg-config and NASM. Build headers do not enable a feature in the running kernel.

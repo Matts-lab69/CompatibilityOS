@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Wine patch queue
 
 Rebaseable patch series, not a divergent Wine fork. Keep a pinned upstream revision, small independently reviewable patches, file-level provenance, and a reason to carry each patch. Prefer submitting fixes upstream. See [Wine audit](../docs/04-auditoria-wine.md).

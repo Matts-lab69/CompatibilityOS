@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Test coverage
 
 `bash "tests/check-series.sh"` checks the series structure: safe relative paths, strictly increasing patch numbers, existing files, and no unlisted patches. This is a static check, not a patch application or build. Lint the shell files with `shellcheck "scripts/fetch-wine.sh" "tests/check-series.sh"`.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Measurement protocol
 
 **Status: not run.** The host has no `/dev/ntsync` according to the user, so the intended ntsync baseline is blocked. A future authorized live environment that already supports it (for example a CachyOS or Fedora USB, if verified) can be evaluated. Keep both sides of each comparison in the same environment on the same machine. Do not change the Gentoo kernel or compare Gentoo results directly against live-USB results.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Design documents
 
 **VERIFIED FACT / HECHO VERIFICADO** identifies evidence checked against source. **HYPOTHESIS / HIPÓTESIS** identifies untested conclusions or proposals. **NOT ANALYZED / SIN ANALIZAR** identifies work not yet verified. Requirements and user-reported host details are labeled separately; neither implies an implementation or test result.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Route and Mount Design
 
 ## Scope and evidence labels

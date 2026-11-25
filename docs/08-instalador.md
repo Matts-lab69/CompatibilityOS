@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Installer and artifact verification
 
 **HECHO VERIFICADO — artifact creation.** [Run 45113410407](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45113410407) uploaded an Actions artifact and attested both the tarball and its SHA-256 manifest. This is not a release. See the [installer guide](../installer/README.md) for consumer verification.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Phase 2 — archived research notes
 
 These notes predate the [authorized experimental design](12-fase2.md). No local module loading, installation, DKMS registration, or changes to the user's host are authorized. Linux remains monolithic; the notes below do not establish feasibility or benefit.

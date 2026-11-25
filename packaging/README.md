@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Desktop and terminal integration
 
 The [MIME templates](mime/) dispatch one local `.exe` or `.msi` to `cpos-run`. The installer owns per-user registration. [binfmt_misc](binfmt/README.md) remains documentation only.

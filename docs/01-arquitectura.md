@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Phase 1 architecture
 
 **Design requirements and target architecture.** Linux remains monolithic and Wine is the engine. The integration changes the user experience; it is not evidence of faster graphics or broader compatibility. No divergent `ntdll`/`win32u` fork and no `umu-launcher`. The CI-tested subset is recorded in [the build notes](07-compilacion.md); the complete XDG folder map and graphics stack remain unimplemented.

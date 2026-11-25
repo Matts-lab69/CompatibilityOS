@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Wine Source Audit and Open Risks
 
 ## Scope and evidence standard

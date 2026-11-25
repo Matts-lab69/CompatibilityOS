@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # CompatibilityOS
 
 I'm building CompatibilityOS so Linux users can double-click a Windows `.exe` or `.msi` without invoking `wine` or managing prefixes. Phase 1 uses Wine. [Experimental Phase 2](docs/12-fase2.md) is separate from the installer and normal launcher; it is not a Wine replacement or a microkernel.

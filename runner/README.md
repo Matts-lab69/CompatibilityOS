@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Internal runner
 
 `cpos-run [--dry-run] [--desktop] [--app ID] -- FILE [ARG ...]` dispatches `.exe` and `.msi` files. Without `--app`, the canonical file path determines the application ID; use the same explicit ID for an installer and its applications. The runner expects `wine/bin`, `base/version` and three registry files in the installed bundle. `CPOS_BUNDLE` selects an alternate bundle. It does not silently switch registry base versions for an existing app.

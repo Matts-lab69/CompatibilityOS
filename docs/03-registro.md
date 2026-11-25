@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Registry and Immutable Base Strategy
 
 ## Status and labels

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Installer
 
 Use `bash "installer/install.sh" [--dry-run] install RUN_ID` or `bash "installer/install.sh" [--dry-run] uninstall`. Installation requires `gh` with artifact attestation support, Bash, GNU coreutils, tar, flock, xdg-mime, update-desktop-database and update-mime-database. Runtime also requires the system libraries for the Wine bundle and a private `XDG_RUNTIME_DIR`.

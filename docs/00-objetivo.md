@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Objective and boundaries
 
 **Requirement.** Double-click to run `.exe` and install `.exe`/`.msi` on Linux; no `wine` invocation in daily use, visible prefixes, or visible intermediary launcher. Deliver signed or verifiably hashed binaries from GitHub through an installer. Start with Gentoo/OpenRC and COSMIC; keep host-specific registration separate from the portable installer core.
