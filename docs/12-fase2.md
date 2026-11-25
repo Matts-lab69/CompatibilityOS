@@ -37,6 +37,12 @@ The experimental `/dev/compat` device has bounded per-open handle tables and no 
 
 ### Closure checks for the next revision
 
+**Guest follow-up — pending CI:** source review traced the failed assertions to two fixture errors: expecting event `RELEASE` to fail when it resets the event, and waiting on a dropped handle instead of the surviving named binding. The revised checks retain an invalid-operation assertion using `FD_GET` on an event and check the close-induced abandonment through the surviving binding. No module behavior changed in this follow-up.
+
+**HECHO VERIFICADO — first expanded run:** [run 45677117063](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45677117063) at `42941e0` completed 10,000,000 non-executing parser fuzz iterations. The MinGW DLL fixture was rejected with status 2 before the delay fixture ran. The module built and the v1–v3 layouts passed, but the disposable guest reported eight failed functional assertions. This run does not verify DLL execution or the expanded guest behavior. The next attempt investigates the two failures independently before rerunning the affected checks.
+
+**HIPÓTESIS — DLL rejection:** the status alone does not locate the failure. The next strategy adds diagnostics separating parse/staging, relocation, dependency ordering, import binding and process attach. It preserves the checks and does not yet claim a fix.
+
 - The PE execution job must build its own MinGW fixtures and check direct DLL imports, forwarded exports, delay imports, and DLL attach/detach order. A delay-import directory alone does not prove lazy binding: verify that the slot is unresolved before the first call, that the first call reaches the expected fixture export, and that a second call reuses the binding. Fuzzing must remain non-executable and complete at least 10,000,000 iterations independently of the execution fixtures.
 - The guest job must exercise independent opens, name and handle lifetime, mutex abandonment, semaphore bounds, and atomic waits without loading the module on the runner host. ABI v1 and v2 layout and behavior checks remain mandatory.
 - **SIN ANALIZAR:** neither historical job success below nor successful compilation alone verifies this expanded scope. Record the tested commit and the jobs that actually ran before marking it verified.

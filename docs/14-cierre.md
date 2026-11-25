@@ -36,6 +36,8 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 
 **SIN ANALIZAR — expanded validation:** the expanded guest tests must confirm named-object lifetime across opens, abandonment reporting and shared semaphore bounds. The PE fixture must distinguish first-call delay binding from merely publishing a delay-import directory. Neither is covered by the historical runs above.
 
+**HECHO VERIFICADO — first expanded run:** [45677117063](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45677117063) at `42941e0` passed the v1–v3 layout checks and completed 10,000,000 non-executing parser fuzz iterations. The DLL fixture and functional QEMU tests failed. See the [Phase 2 follow-up](12-fase2.md#closure-checks-for-the-next-revision); the expanded scope remains open.
+
 **SIN ANALIZAR:** active ntsync, real COSMIC, performance and crash rates. No baseline was run.
 
 ## CachyOS USB handoff

@@ -3,6 +3,7 @@
 #include "pe.h"
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -550,24 +551,39 @@ static enum pe_status dll_set_load(struct dll_set *set,
         if (find_dll(set, input->name) != (int)i) return PE_INVALID;
         enum pe_status status = fixture_image_map(&set->entries[i].image,
                                                   input->data, input->size, 1);
-        if (status != PE_OK) return status;
+        if (status != PE_OK) {
+            fprintf(stderr, "DLL load failed during parse/map: %s (%d)\n", input->name, status);
+            return status;
+        }
         /* Static TLS and delay binding are implemented only for the EXE fixture. */
-        if (set->entries[i].image.delay_rva || set->entries[i].image.tls_rva)
+        if (set->entries[i].image.delay_rva || set->entries[i].image.tls_rva) {
+            fprintf(stderr, "DLL load rejected unsupported TLS/delay-import directory: %s\n", input->name);
             return PE_UNSUPPORTED;
-        if (!fixture_image_relocate(&set->entries[i].image)) return PE_UNSUPPORTED;
+        }
+        if (!fixture_image_relocate(&set->entries[i].image)) {
+            fprintf(stderr, "DLL load failed during relocation: %s\n", input->name);
+            return PE_UNSUPPORTED;
+        }
     }
     for (size_t i = 0; i < set->count; ++i)
-        if (!dll_dependencies_first(set, i)) return PE_UNSUPPORTED;
+        if (!dll_dependencies_first(set, i)) {
+            fprintf(stderr, "DLL load failed resolving dependency graph: %s\n", set->entries[i].name);
+            return PE_UNSUPPORTED;
+        }
     for (size_t i = 0; i < set->count; ++i) {
         struct fixture_image *image = &set->entries[i].image;
-        if (!bind_imports(image->destination, image->staged, image->import_rva, set))
+        if (!bind_imports(image->destination, image->staged, image->import_rva, set)) {
+            fprintf(stderr, "DLL load failed binding imports: %s\n", set->entries[i].name);
             return PE_UNSUPPORTED;
+        }
     }
     for (size_t i = 0; i < set->count; ++i) {
         int entry_executable = 0;
         if (!fixture_image_protect(&set->entries[i].image, &entry_executable) ||
-            (set->entries[i].image.parsed.entry_rva && !entry_executable))
+            (set->entries[i].image.parsed.entry_rva && !entry_executable)) {
+            fprintf(stderr, "DLL load failed section protection/entry validation: %s\n", set->entries[i].name);
             return PE_UNSUPPORTED;
+        }
     }
     if (!options->invoke_entry) return PE_OK;
     for (size_t n = 0; n < set->order_count; ++n) {
@@ -576,7 +592,10 @@ static enum pe_status dll_set_load(struct dll_set *set,
         int attached = ((int (__attribute__((ms_abi)) *)(void *, uint32_t, void *))
             (entry->image.destination + entry->image.parsed.entry_rva))(
                 entry->image.destination, 1, NULL);
-        if (!attached) return PE_UNSUPPORTED;
+        if (!attached) {
+            fprintf(stderr, "DLL process-attach entry returned failure: %s\n", entry->name);
+            return PE_UNSUPPORTED;
+        }
         entry->attached = 1;
     }
     return PE_OK;

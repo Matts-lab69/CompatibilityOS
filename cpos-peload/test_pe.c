@@ -26,6 +26,17 @@ static int read_fixture(const char *path, uint8_t *buffer, size_t capacity, size
     int failed = ferror(in) || !feof(in);
     return fclose(in) == 0 && !failed;
 }
+
+static const char *pe_status_name(enum pe_status status)
+{
+    switch (status) {
+    case PE_OK: return "PE_OK";
+    case PE_INVALID: return "PE_INVALID";
+    case PE_UNSUPPORTED: return "PE_UNSUPPORTED";
+    case PE_NOMEM: return "PE_NOMEM";
+    }
+    return "unknown PE status";
+}
 #endif
 
 static void make_pe(uint8_t *b)
@@ -84,12 +95,39 @@ int main(int argc, char **argv)
         const struct pe_fixture_dll dlls[] = {
             {"cposapi.dll", api, api_size}, {"cposdep.dll", dep, dep_size}
         };
+        const char *const dll_paths[] = {argv[3], argv[4]};
+        for (size_t i = 0; i < sizeof(dlls) / sizeof(dlls[0]); ++i) {
+            struct pe_image parsed;
+            enum pe_status status = pe_parse(dlls[i].data, dlls[i].size, &parsed);
+            if (status != PE_OK) {
+                fprintf(stderr, "DLL preflight parse failed: %s (%s): %s\n",
+                        dlls[i].name, dll_paths[i], pe_status_name(status));
+                return 1;
+            }
+            if (!parsed.is_dll) {
+                fprintf(stderr, "DLL preflight rejected non-DLL image: %s (%s)\n",
+                        dlls[i].name, dll_paths[i]);
+                return 1;
+            }
+            uint8_t *staging = NULL;
+            size_t staging_size = 0;
+            status = pe_stage(dlls[i].data, dlls[i].size, &parsed,
+                              &staging, &staging_size);
+            if (status != PE_OK) {
+                fprintf(stderr, "DLL preflight stage failed: %s (%s): %s\n",
+                        dlls[i].name, dll_paths[i], pe_status_name(status));
+                return 1;
+            }
+            pe_stage_free(staging, staging_size);
+        }
         const struct pe_import host_import = {
             "cposhost.dll", "CposFixtureHostReady", (void *)fixture_host_ready
         };
         const struct pe_exec_options dll_options = {&host_import, 1, 1, dlls, 2};
         enum pe_status dll_status = pe_execute_fixture(exe, exe_size, &dll_options);
-        if (dll_status != PE_OK) fprintf(stderr, "MinGW DLL fixture rejected: %d\n", dll_status);
+        if (dll_status != PE_OK)
+            fprintf(stderr, "MinGW DLL fixture execution rejected after preflight: %s (%d)\n",
+                    pe_status_name(dll_status), dll_status);
         if (dll_status == PE_OK && fixture_lifecycle_step != 4) {
             fputs("Missing DLL lifecycle callback\n", stderr);
             return 1;
