@@ -102,6 +102,12 @@ int main(int argc, char **argv)
     assert(pe_stage(bytes, sizeof(bytes), &im, &stage, &length) == PE_OK);
     assert(length == 0x2000 && stage[0x1000] == 0xc3);
     pe_stage_free(stage, length);
+    struct pe_image forged = im;
+    forged.sections[0].rva = UINT32_MAX - 15;
+    assert(pe_stage(bytes, sizeof(bytes), &forged, &stage, &length) == PE_INVALID);
+    forged = im;
+    forged.sections[0].raw_offset = UINT32_MAX - 15;
+    assert(pe_stage(bytes, sizeof(bytes), &forged, &stage, &length) == PE_INVALID);
     bytes[0] = 0; assert(pe_parse(bytes, sizeof(bytes), &im) == PE_INVALID);
     make_pe(bytes); w32(bytes + 0x3c, UINT32_MAX);
     assert(pe_parse(bytes, sizeof(bytes), &im) != PE_OK);

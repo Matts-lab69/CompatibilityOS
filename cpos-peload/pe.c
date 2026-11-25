@@ -151,12 +151,27 @@ enum pe_status pe_stage(const uint8_t *d, size_t n, const struct pe_image *im,
     if (!d || !im || !staging || !staging_size || !range(n, 0, im->headers_size) ||
         im->headers_size > im->image_size || !im->image_size || im->image_size > MAX_IMAGE_SIZE ||
         im->section_count > sizeof(im->sections) / sizeof(im->sections[0])) return PE_INVALID;
+    if (im->entry_rva >= im->image_size)
+        return PE_INVALID;
+    for (uint16_t i = 0; i < im->section_count; ++i) {
+        const struct pe_section *s = &im->sections[i];
+        uint32_t span = s->virtual_size > s->raw_size ? s->virtual_size : s->raw_size;
+        if (s->rva < im->headers_size ||
+            (uint64_t)s->rva + span > im->image_size ||
+            !range(n, s->raw_offset, s->raw_size) ||
+            !range(im->image_size, s->rva, s->raw_size)) return PE_INVALID;
+        for (uint16_t j = 0; j < i; ++j) {
+            const struct pe_section *p = &im->sections[j];
+            uint32_t pspan = p->virtual_size > p->raw_size ? p->virtual_size : p->raw_size;
+            if ((uint64_t)s->rva < (uint64_t)p->rva + pspan &&
+                (uint64_t)p->rva < (uint64_t)s->rva + span) return PE_INVALID;
+        }
+    }
     uint8_t *mem = calloc(1, im->image_size);
     if (!mem) return PE_NOMEM;
     memcpy(mem, d, im->headers_size);
     for (uint16_t i = 0; i < im->section_count; ++i) {
         const struct pe_section *s = &im->sections[i];
-        if (!range(n, s->raw_offset, s->raw_size) || !range(im->image_size, s->rva, s->raw_size)) { free(mem); return PE_INVALID; }
         memcpy(mem + s->rva, d + s->raw_offset, s->raw_size);
     }
     *staging = mem; *staging_size = im->image_size;
