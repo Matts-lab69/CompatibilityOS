@@ -165,6 +165,21 @@ check_gac() {
         "\\\\?\\unix${fusion_dll//\//\\}" "\\\\?\\unix${fixture//\//\\}" "$identity"
 }
 if (check_gac); then printf 'ok gac-fixture\n'; else report gac-fixture; fi
+check_persistent_font() {
+    local fixture="$PWD/font-persistent.exe" status=0
+    x86_64-w64-mingw32-gcc -municode "$root/tests/font-persistent.c" -ladvapi32 -lgdi32 -o "$fixture" || return
+    if ! FONTCONFIG_FILE="$font_config" CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" \
+        timeout 90 "$runner" --app 'font-persistent' -- "$fixture" absent; then return 1; fi
+    if ! FONTCONFIG_FILE="$font_config" CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" \
+        timeout 90 "$runner" --app 'font-persistent' -- "$fixture" install; then return 1; fi
+    # cpos-run waits for wineserver to exit before returning, even for fixtures.
+    FONTCONFIG_FILE="$font_config" CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" \
+        timeout 90 "$runner" --app 'font-persistent' -- "$fixture" check || status=$?
+    FONTCONFIG_FILE="$font_config" CPOS_TEST_FONT_FILE="\\\\?\\unix${font_file//\//\\}" \
+        timeout 90 "$runner" --app 'font-persistent' -- "$fixture" cleanup || status=$?
+    return "$status"
+}
+if check_persistent_font; then printf 'ok persistent-font\n'; else report persistent-font; fi
 check_spool_job() (
     port='' log="$PWD/spool-sink.log" socket='/run/cups/cups.sock'
     x86_64-w64-mingw32-gcc -municode "$root/tests/spool-probe.c" -lwinspool -o 'spool-probe.exe' || return
