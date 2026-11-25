@@ -121,13 +121,19 @@ if (check_paths); then printf 'ok paths\n'; else report paths; fi
 if (check_known_folders); then printf 'ok known-folders\n'; else report known-folders; fi
 if (check_windows_writes); then printf 'ok windows-writes\n'; else report windows-writes; fi
 if app "$exe64" 'services'; then printf 'ok services-config\n'; else report services-config; fi
-rpc_trace="$PWD/rpcss-com.log"
-if WINEDEBUG='-all,err+all,+ole,+rpc' timeout 90 "$runner" --app 'rpcss-com-fixture' -- "$exe64" 'rpcss-com' 2> "$rpc_trace"; then
-    printf 'ok rpcss-com\n'
-else
-    grep -Ei '6f25d812|LocalServer32|activating local server|failed to run local server|failed to start|RpcSs' "$rpc_trace" | tail -n 90 >&2 || :
-    report rpcss-com
-fi
+check_rpcss_com() {
+    local trace="$PWD/rpcss-com.log" status=0
+    local server="$XDG_DATA_HOME/rpcss-com-fixture/windows-temp/CPOS-COM-Fixture.exe"
+    timeout 90 "$runner" --app 'rpcss-com-fixture' -- "$exe64" || return
+    cp -- "$exe64" "$server" || return
+    WINEDEBUG='-all,err+all,+ole,+rpc' timeout 90 "$runner" --app 'rpcss-com-fixture' -- "$exe64" 'rpcss-com' 2> "$trace" || status=$?
+    if (( status )); then
+        grep -Ei '6f25d812|LocalServer32|activating local server|failed to run local server|failed to start|RpcSs' "$trace" | tail -n 90 >&2 || :
+    fi
+    rm -- "$server" || return
+    return "$status"
+}
+if check_rpcss_com; then printf 'ok rpcss-com\n'; else report rpcss-com; fi
 fusion_dll="$CPOS_BUNDLE/wine/lib/wine/x86_64-windows/fusion.dll"
 font_file="$PWD/cpos-font-fixture.ttf"
 /usr/bin/python3 "$root/tests/make-font-fixture.py" "$font_file"

@@ -24,6 +24,8 @@ Evidence is revision-specific. The full [Wine CI][wine] and [installer CI][insta
 
 **HECHO VERIFICADO:** [run 45622130216](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45622130216/job/139254670008) still returned `0x80040154` with the fixture in HKLM. That change alone did not resolve activation. The pinned [`rpc_get_local_class_object`](https://github.com/wine-mirror/wine/blob/7298a818b79446bae153b8d5aa27235ab3703bf9/dlls/combase/rpc.c) can try several activation paths before returning the last error, so this HRESULT does not identify the failing path. The follow-up adds registry readback and filtered OLE/RPC traces without relaxing the assertions.
 
+**HECHO VERIFICADO:** [run 45630202444](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45630202444/job/139283281980) read back `LocalServer32` successfully and logged `create_server failed to run local server` for the relative `unix\home\...\probe64.exe` command, before the surrogate fallback returned `0x80040154`. The revised smoke test places the server in the application's routed Temp directory and registers an absolute DOS path. **SIN ANALIZAR:** activation and cleanup with that path until CI completes.
+
 - **PARCIAL:** [PE job][pe] passed synthetic TLS, relocation and import fixtures plus 10 million fuzz iterations; general DLL loading, forwarders and delay imports are not verified.
 - **PARCIAL:** [QEMU job][kernel] passed per-open objects, wait sets and restricted file references; named objects and abandonment are not covered.
 - **HECHO VERIFICADO:** `083336c`, [QEMU job][kernel]: optional event-backed messaging and versioned ioctl smoke tests. This does not substitute for wineserver. See [Phase 2](12-fase2.md).

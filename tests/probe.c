@@ -108,10 +108,11 @@ static int rpcss_com(void)
     SC_HANDLE scm = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
     SC_HANDLE rpc;
     SERVICE_STATUS_PROCESS before, after;
-    DWORD needed, module_length, disposition;
+    DWORD needed, disposition;
     IUnknown *object = NULL;
     HRESULT hr;
-    WCHAR module[MAX_PATH], command[MAX_PATH + 32], registered[MAX_PATH + 32];
+    static const WCHAR command[] = L"\"C:\\Windows\\Temp\\CPOS-COM-Fixture.exe\" com-server";
+    WCHAR registered[ARRAYSIZE(command)];
     HKEY key = NULL, server_key = NULL;
     const WCHAR *clsid_path = L"Software\\Classes\\CLSID\\{6F25D812-9374-4C86-9122-B451D1AC7039}";
     int bad = 0, attempted = 0, initialized = 0;
@@ -130,10 +131,7 @@ static int rpcss_com(void)
         CloseServiceHandle(scm);
         return 1;
     }
-    module_length = GetModuleFileNameW(NULL, module, MAX_PATH);
-    if (!module_length || module_length >= MAX_PATH ||
-        swprintf(command, sizeof(command) / sizeof(command[0]), L"\"%ls\" com-server", module) < 0 ||
-        RegCreateKeyExW(HKEY_LOCAL_MACHINE, clsid_path, 0, NULL, 0, KEY_WRITE, NULL, &key, &disposition) != ERROR_SUCCESS ||
+    if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, clsid_path, 0, NULL, 0, KEY_WRITE, NULL, &key, &disposition) != ERROR_SUCCESS ||
         disposition != REG_CREATED_NEW_KEY) {
         puts("Could not create a new ephemeral COM fixture registration");
         bad = 1;
@@ -141,7 +139,7 @@ static int rpcss_com(void)
         attempted = 1;
         if (RegCreateKeyExW(key, L"LocalServer32", 0, NULL, 0, KEY_WRITE, NULL, &server_key, NULL) != ERROR_SUCCESS ||
             RegSetValueExW(server_key, NULL, 0, REG_SZ, (const BYTE *)command,
-                           (lstrlenW(command) + 1) * sizeof(WCHAR)) != ERROR_SUCCESS) {
+                           sizeof(command)) != ERROR_SUCCESS) {
             puts("Could not register ephemeral COM fixture");
             bad = 1;
         }
