@@ -26,6 +26,15 @@ Evidence is revision-specific. The full [Wine CI][wine] and [installer CI][insta
 
 **SIN ANALIZAR:** active ntsync, real COSMIC, performance and crash rates. No baseline was run.
 
+## CachyOS USB handoff
+
+1. On the USB session, record the kernel version and whether `/dev/ntsync` exists as a character device and can be opened by the current user. Do not load modules or change permissions. A reachable device alone does not prove that Wine selected it.
+2. Open the [verified run's artifacts][full] and locate `compatibilityos-linux-x86_64`. If it expired, use a fresh, successful and attested Wine CI run from `main`; do not use the staging artifact. The artifact contains the bundle and `SHA256SUMS`.
+3. Start with the repository installer's `--dry-run install RUN_ID` mode, which prints the destination paths without writing. If installing in the USB environment is desired, normal installation fetches the selected run and checks the manifest, bundle hash and signed attestations before registering the launcher. See [installer documentation](08-instalador.md).
+4. Record the exact run and commit, kernel, desktop session, launcher result, and the `cpos-sync:` marker in `${XDG_STATE_HOME:-$HOME/.local/state}/cpos/APP/wine.log`. Record absent logs or errors verbatim. Do not infer performance or crash-rate differences from this smoke check.
+
+**Pending decisions:** confirm active ntsync and actual COSMIC behavior on the USB; no host changes or release are part of this audit.
+
 [full]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757
 [build]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563021512
 [static]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563021880
