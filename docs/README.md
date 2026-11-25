@@ -21,3 +21,4 @@
 15. [Implementation follow-up](13-cierre.md)
 16. [Headless subsystem probes](14-servicios.md)
 17. [Milestone status and repository footprint](13-estado.md)
+18. [Closure audit and CachyOS USB handoff](14-cierre.md)
