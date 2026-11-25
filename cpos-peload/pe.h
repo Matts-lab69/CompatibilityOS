@@ -11,6 +11,7 @@ struct pe_image {
     uint64_t image_base;
     uint32_t image_size, headers_size, entry_rva;
     uint16_t section_count;
+    uint16_t is_dll;
     struct pe_section sections[96];
 };
 
@@ -20,17 +21,24 @@ enum pe_status pe_stage(const uint8_t *data, size_t size,
                         size_t *staging_size);
 void pe_stage_free(uint8_t *staging, size_t size);
 
-/* Experimental fixture-only execution API. Import names are exact, caller-owned
- * allowlist entries; addresses are never looked up in the host process. */
+/* Experimental fixture-only execution API. Host imports use exact caller-owned
+ * allowlist entries; DLL bytes are supplied explicitly and never discovered. */
 struct pe_import {
     const char *module;
     const char *symbol;
     void *address;
 };
+struct pe_fixture_dll {
+    const char *name;
+    const uint8_t *data;
+    size_t size;
+};
 struct pe_exec_options {
     const struct pe_import *imports;
     size_t import_count;
     int invoke_entry;
+    const struct pe_fixture_dll *dlls;
+    size_t dll_count;
 };
 enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
                                  const struct pe_exec_options *options);

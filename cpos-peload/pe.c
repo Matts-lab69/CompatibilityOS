@@ -104,10 +104,11 @@ enum pe_status pe_parse(const uint8_t *d, size_t n, struct pe_image *out)
     const uint8_t *coff = d + pe + 4;
     uint16_t count = u16(coff + 2), opt_size = u16(coff + 16);
     if (u16(coff) != 0x8664 || count == 0 || count > 96 || opt_size < 112 ||
-        !range(n, (uint64_t)pe + 24, opt_size) || u16(coff + 18) & 0x2000) return PE_UNSUPPORTED;
+        !range(n, (uint64_t)pe + 24, opt_size)) return PE_UNSUPPORTED;
     const uint8_t *o = coff + 20;
     if (u16(o) != 0x20b || opt_size < 112) return PE_UNSUPPORTED;
     struct pe_image im = {0};
+    im.is_dll = (u16(coff + 18) & 0x2000u) != 0;
     im.entry_rva = u32(o + 16); im.image_base = u64(o + 24);
     uint32_t section_align = u32(o + 32), file_align = u32(o + 36);
     im.image_size = u32(o + 56); im.headers_size = u32(o + 60);

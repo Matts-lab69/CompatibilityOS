@@ -17,6 +17,17 @@ static void w16(uint8_t *p, uint16_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v 
 static void w32(uint8_t *p, uint32_t v) { for (unsigned i = 0; i < 4; ++i) p[i] = (uint8_t)(v >> (8 * i)); }
 static void w64(uint8_t *p, uint64_t v) { w32(p, (uint32_t)v); w32(p + 4, (uint32_t)(v >> 32)); }
 
+#ifdef CPOS_TEST_EXEC
+static int read_fixture(const char *path, uint8_t *buffer, size_t capacity, size_t *length)
+{
+    FILE *in = fopen(path, "rb");
+    if (!in) return 0;
+    *length = fread(buffer, 1, capacity, in);
+    int failed = ferror(in) || !feof(in);
+    return fclose(in) == 0 && !failed;
+}
+#endif
+
 static void make_pe(uint8_t *b)
 {
     memset(b, 0, 1024); b[0] = 'M'; b[1] = 'Z'; w32(b + 0x3c, 0x80);
@@ -47,6 +58,14 @@ static void __attribute__((ms_abi)) fixture_hello(void)
 {
     puts("CPOS PE hello");
 }
+
+static unsigned int fixture_lifecycle_step;
+
+static unsigned int __attribute__((ms_abi)) fixture_host_ready(unsigned int step)
+{
+    assert(step == ++fixture_lifecycle_step);
+    return 0x29U;
+}
 #endif
 
 int main(int argc, char **argv)
@@ -55,14 +74,33 @@ int main(int argc, char **argv)
     make_tables(bytes);
     assert(pe_parse(bytes, sizeof(bytes), &im) == PE_OK);
 #ifdef CPOS_TEST_EXEC
+    if (argc == 5 && (!strcmp(argv[1], "--execute-dll-fixture") ||
+                      !strcmp(argv[1], "--execute-delay-fixture"))) {
+        uint8_t exe[65536], api[65536], dep[65536];
+        size_t exe_size, api_size, dep_size;
+        if (!read_fixture(argv[2], exe, sizeof(exe), &exe_size) ||
+            !read_fixture(argv[3], api, sizeof(api), &api_size) ||
+            !read_fixture(argv[4], dep, sizeof(dep), &dep_size)) return 1;
+        const struct pe_fixture_dll dlls[] = {
+            {"cposapi.dll", api, api_size}, {"cposdep.dll", dep, dep_size}
+        };
+        const struct pe_import host_import = {
+            "cposhost.dll", "CposFixtureHostReady", (void *)fixture_host_ready
+        };
+        const struct pe_exec_options dll_options = {&host_import, 1, 1, dlls, 2};
+        enum pe_status dll_status = pe_execute_fixture(exe, exe_size, &dll_options);
+        if (dll_status != PE_OK) fprintf(stderr, "MinGW DLL fixture rejected: %d\n", dll_status);
+        if (dll_status == PE_OK && fixture_lifecycle_step != 4) {
+            fputs("Missing DLL lifecycle callback\n", stderr);
+            return 1;
+        }
+        return dll_status != PE_OK;
+    }
     if (argc == 3 && (!strcmp(argv[1], "--execute-fixture") ||
                       !strcmp(argv[1], "--execute-import-fixture"))) {
         uint8_t fixture[65536];
-        FILE *in = fopen(argv[2], "rb");
-        if (!in) return 1;
-        size_t n = fread(fixture, 1, sizeof(fixture), in);
-        int failed = ferror(in) || !feof(in);
-        if (fclose(in) || failed) return 1;
+        size_t n;
+        if (!read_fixture(argv[2], fixture, sizeof(fixture), &n)) return 1;
         const int import_fixture = !strcmp(argv[1], "--execute-import-fixture");
 #if defined(__linux__) && defined(__x86_64__)
         struct pe_import allowed = {"cposhello.dll", "CposPeHello", (void *)fixture_hello};
@@ -70,7 +108,7 @@ int main(int argc, char **argv)
         struct pe_import allowed = {0};
 #endif
         const struct pe_exec_options options = {import_fixture ? &allowed : NULL,
-                                                import_fixture ? 1 : 0, 1};
+                                                import_fixture ? 1 : 0, 1, NULL, 0};
 #if defined(__linux__) && defined(__x86_64__)
         uintptr_t original_gs = 0, restored_gs = 0;
         if (syscall(SYS_arch_prctl, ARCH_GET_GS, &original_gs) != 0) return 1;
@@ -89,7 +127,7 @@ int main(int argc, char **argv)
     }
     void (*fixture_import)(void) = (void (*)(void))main;
     struct pe_import allowed = { "fixture.dll", "Fixture", (void *)fixture_import };
-    struct pe_exec_options exec_options = { &allowed, 1, 0 };
+    struct pe_exec_options exec_options = { &allowed, 1, 0, NULL, 0 };
     assert(pe_execute_fixture(bytes, sizeof(bytes), &exec_options) == PE_OK);
 #endif
     if (argc == 2) {
@@ -117,6 +155,13 @@ int main(int argc, char **argv)
     assert(pe_parse(bytes, sizeof(bytes), &im) == PE_INVALID);
     make_pe(bytes); make_tables(bytes); w32(bytes + 0x22c, 0x2000);
     assert(pe_parse(bytes, sizeof(bytes), &im) == PE_INVALID);
+    make_pe(bytes);
+    assert(pe_parse(bytes, sizeof(bytes), &im) == PE_OK && !im.is_dll);
+    bytes[0x80 + 23] |= 0x20;
+    assert(pe_parse(bytes, sizeof(bytes), &im) == PE_OK && im.is_dll);
+#ifdef CPOS_TEST_EXEC
+    assert(pe_execute_fixture(bytes, sizeof(bytes), &exec_options) == PE_INVALID);
+#endif
     puts("PE unit checks passed");
     return 0;
 }
