@@ -3,6 +3,8 @@
 
 ## Closure follow-up — 2026-11-25
 
+**HECHO VERIFICADO — resolution:** `62c2191` registered the synthetic COM server with an absolute DOS path. [Wine CI 45637774717](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45637774717) passed build, Xvfb and attestation. Xvfb logged `ok rpcss-com`, `ok persistent-font`, and `ok explorer-on-demand`. [Installer CI 45646058915](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45646058915) verified that exact bundle. The experimental jobs were skipped on this push; their separate green evidence is in [run 45604182888](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888). See the [closure audit](14-cierre.md) for remaining gaps.
+
 See the [criterion-by-criterion audit and CachyOS USB handoff](14-cierre.md). **HECHO VERIFICADO:** [run 45604182888](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139198575163) passed persistent font discovery in a fresh session (`ok persistent-font`), but the COM probe failed with `ShellWindows COM activation failed: 0x80040152`. The synthetic replacement in [run 45614430285](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45614430285/job/139227228315) failed with `Synthetic COM activation failed: 0x80040154`. **HIPÓTESIS:** the pinned Wine lookup uses machine classes; `3298d44` registers the fixture under HKLM of the disposable prefix. **SIN ANALIZAR:** the outcome of [run 45622130216](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45622130216).
 
 ## Recovery and local checks
