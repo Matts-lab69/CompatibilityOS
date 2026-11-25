@@ -20,7 +20,7 @@ jobs:
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
             ca-certificates git make clang libclang-rt-dev gcc-mingw-w64-x86-64-posix python3
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Compile, unit test and fuzz the non-executable PE staging loader
@@ -45,7 +45,7 @@ jobs:
           apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
             gcc make libc6-dev ca-certificates git linux-headers-generic linux-image-generic \
             qemu-system-x86 busybox-static cpio
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Compile the experimental module without loading it
