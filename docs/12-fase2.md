@@ -3,6 +3,12 @@
 
 Neither Wine, `cpos-run` nor the installer uses these EXPERIMENTAL components. CI loads the out-of-tree module only inside a disposable QEMU guest, never on the runner host. No host deployment instructions are part of this phase.
 
+| Area | Implemented and verified at `083336c` | Scaffolding / missing before replacing wineserver |
+| --- | --- | --- |
+| PE | [Synthetic PE fixtures and parser fuzzing](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022265): x86-64 mapping, relocations, a minimal TEB/PEB, a TLS slot and an allowlisted import. | General DLL and process initialization, thread lifecycle and Windows ABI coverage. |
+| Objects | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): file-local objects, atomic wait sets and restricted file references. | Named sharing, abandoned mutexes, access masks, inheritance and asynchronous I/O. |
+| Messages and ABI | [QEMU smoke](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465): versioned ioctl checks and synchronous owner-thread queue with guest event signaling. | Win32 message pumping, reentrancy, cross-process dispatch and Wine client protocol compatibility. |
+
 ## Userspace and loader
 
 **HIPÓTESIS:** maintain process-local Windows handle tables that refer to Linux fds; scope named NT objects by user and do not accept a caller-supplied UID as authority. Broker policy, access masks, inheritance, duplication and namespace lifetime must be designed before exposing shared objects. For synchronous `SendMessage`, use a per-thread request queue and completion event; ntsync may signal both. Reentrancy, cancellation and thread exit are unresolved.
