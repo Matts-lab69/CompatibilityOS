@@ -169,7 +169,7 @@ static long cpos_wait_set_ioctl(struct cpos_file *ctx, void __user *user, bool v
 	if (version3) {
 		if (copy_from_user(&wait3, user, sizeof(wait3)))
 			return -EFAULT;
-		if (!access_ok(user, sizeof(wait3)) || fault_in_writeable(user, sizeof(wait3)))
+		if (!access_ok(user, sizeof(wait3)) || fault_in_safe_writeable(user, sizeof(wait3)))
 			return -EFAULT;
 		memcpy(&wait, &wait3, sizeof(wait));
 	} else if (copy_from_user(&wait, user, sizeof(wait))) {

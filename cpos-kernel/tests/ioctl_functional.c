@@ -299,6 +299,7 @@ static void check_named_mutex_abandonment(int first_fd)
 	wait.handles[0] = third_mutex;
 	wait.handles[1] = first_sem;
 	CHECK(ioctl(first_fd, CPOS_IOC_WAIT_SET_V3, &wait) < 0 && errno == ETIMEDOUT);
+	CHECK(wait.size == sizeof(wait));
 	CHECK(object_op(second_fd, second_sem, CPOS_OP_SIGNAL, 0) == 0);
 	wait.abandoned_mask = 0;
 	wait.result_index = 0;
