@@ -28,13 +28,13 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 
 ## Experimental Phase 2
 
-- **PARCIAL:** [PE job][pe] passed synthetic TLS, relocation and import fixtures plus 10 million fuzz iterations; general DLL loading, forwarders and delay imports are not verified.
-- **PARCIAL:** [QEMU job][kernel] passed per-open objects, wait sets and restricted file references; named objects and abandonment are not covered.
+- **HECHO VERIFICADO — PE fixtures:** [PE job at `053b399`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45679146336/job/139434689770) passed direct DLL imports, a forwarder, first-call symbol binding and reuse, and attach/detach order. It completed 10,000,000 non-executing fuzz iterations. General DLL compatibility remains out of scope.
+- **HECHO VERIFICADO — named synchronization:** [QEMU job at `053b399`](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45679146336/job/139434689290) passed v1–v3 layouts, named object lifetime, abandonment on binding drop/close, bounded semaphores and atomic waits. This does not establish ntsync equivalence.
 - **HECHO VERIFICADO:** `083336c`, [QEMU job][kernel]: optional event-backed messaging and versioned ioctl smoke tests. This does not substitute for wineserver. See [Phase 2](12-fase2.md).
 
 **HECHO VERIFICADO — historical scope:** the [experimental PE][closure-pe] and [kernel][closure-kernel] jobs passed at `6fa11f2`; the same workflow failed separately at the Wine COM probe. Those green jobs do not verify the expanded [Phase 2 closure checks](12-fase2.md#closure-checks-for-the-next-revision).
 
-**SIN ANALIZAR — expanded validation:** the expanded guest tests must confirm named-object lifetime across opens, abandonment reporting and shared semaphore bounds. The PE fixture must distinguish first-call delay binding from merely publishing a delay-import directory. Neither is covered by the historical runs above.
+**Pending integrated validation:** the dedicated Phase 2 workflow passed; the full Wine workflow and its downstream installer are separate evidence.
 
 **HECHO VERIFICADO — first expanded run:** [45677117063](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45677117063) at `42941e0` passed the v1–v3 layout checks and completed 10,000,000 non-executing parser fuzz iterations. The DLL fixture and functional QEMU tests failed. See the [Phase 2 follow-up](12-fase2.md#closure-checks-for-the-next-revision); the expanded scope remains open.
 
