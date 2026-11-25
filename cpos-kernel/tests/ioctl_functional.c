@@ -133,7 +133,8 @@ static void check_contract_errors(int fd)
 	wait.count = 1;
 	wait.version = CPOS_ABI_VERSION;
 	CHECK(ioctl(fd, CPOS_IOC_WAIT_SET, &wait) < 0 && errno == EINVAL);
-	CHECK(object_op(fd, handle, CPOS_OP_RELEASE, 0) < 0 && errno == EINVAL);
+	CHECK(object_op(fd, handle, CPOS_OP_FD_GET, 0) < 0 && errno == EINVAL);
+	CHECK(object_op(fd, handle, CPOS_OP_RELEASE, 0) == 0);
 	drop_object(fd, handle);
 	CHECK(object_op(fd, handle, CPOS_OP_SIGNAL, 0) < 0 && errno == ENOENT);
 	CHECK(ioctl(fd, CPOS_IOC_OBJECT_DROP,
@@ -280,8 +281,8 @@ static void check_named_mutex_abandonment(int first_fd)
 			CPOS_NAMED_OPEN_EXISTING, 0, 0, 0, &closing_mutex) == 0);
 		CHECK(object_op(close_fd, closing_mutex, CPOS_OP_WAIT, 0) == 0);
 		CHECK(close(close_fd) == 0);
-		CHECK(object_op(first_fd, first_mutex, CPOS_OP_WAIT, 0) < 0 && errno == EOWNERDEAD);
-		CHECK(object_op(first_fd, first_mutex, CPOS_OP_RELEASE, 0) == 0);
+		CHECK(object_op(second_fd, second_mutex, CPOS_OP_WAIT, 0) < 0 && errno == EOWNERDEAD);
+		CHECK(object_op(second_fd, second_mutex, CPOS_OP_RELEASE, 0) == 0);
 	}
 
 	CHECK(named_binding(first_fd, "functional-abandoned-mutex",
