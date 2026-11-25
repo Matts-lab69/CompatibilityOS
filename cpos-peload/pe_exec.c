@@ -470,8 +470,14 @@ static unsigned __attribute__((ms_abi)) fixture_delay_first_call(void)
 static int fixture_delay_prepare(struct fixture_image *image, struct dll_set *dlls,
                                  struct fixture_delay *delay)
 {
-    if (image->import_rva || image->tls_rva || find_dll(dlls, "cposdep.dll") < 0)
+    if (image->tls_rva || find_dll(dlls, "cposdep.dll") < 0)
         return 0;
+    /* MinGW can emit an ordinary import directory containing only its terminator. */
+    if (image->import_rva) {
+        if (!image_range(image->parsed.image_size, image->import_rva, 20)) return 0;
+        for (size_t i = 0; i < 20; ++i)
+            if (image->staged[image->import_rva + i]) return 0;
+    }
     uint32_t slot = r32(image->staged + image->delay_rva + 12);
     const uint8_t *headers = image->optional_header + r16(image->optional_header - 4);
     for (uint16_t i = 0; i < image->parsed.section_count; ++i) {
@@ -627,7 +633,11 @@ enum pe_status pe_execute_fixture(const uint8_t *data, size_t size,
     struct fixture_delay delay = {0};
     if (!fixture_image_relocate(&image)) goto invalid;
     if (image.delay_rva && (!options->invoke_entry ||
-        !fixture_delay_prepare(&image, &dlls, &delay))) goto unsupported;
+        !fixture_delay_prepare(&image, &dlls, &delay))) {
+        fprintf(stderr, "Delay fixture preparation rejected (ordinary import RVA %#x, TLS RVA %#x)\n",
+                image.import_rva, image.tls_rva);
+        goto unsupported;
+    }
     if (!bind_imports(image.destination, image.staged, image.import_rva, &dlls)) goto invalid;
     if (options->invoke_entry && !setup_tls(image.destination, image.staged,
             &image.parsed, image.tls_rva, image.tls_size, image.tls)) goto unsupported;
