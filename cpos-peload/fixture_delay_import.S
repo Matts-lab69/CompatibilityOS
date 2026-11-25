@@ -53,6 +53,7 @@ fixture_delay_import_name:
 	.p2align 3
 fixture_delay_module:
 	.quad 0
+	.quad fixture_delay_entry        /* absolute reference for a DIR64 relocation */
 
 	.section .data$diat,"dw"
 	.p2align 3

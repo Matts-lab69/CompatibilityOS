@@ -6,6 +6,8 @@ typedef unsigned long DWORD;
 __declspec(dllimport) unsigned int CposDependencyValue(void);
 __declspec(dllimport) unsigned int CposFixtureHostReady(unsigned int step);
 static volatile unsigned int api_attached;
+/* Keep a real DIR64 relocation even when all code references are RIP-relative. */
+static volatile unsigned int *const relocation_anchor __attribute__((used)) = &api_attached;
 
 BOOL DllMain(HANDLE module, DWORD reason, void *reserved)
 {

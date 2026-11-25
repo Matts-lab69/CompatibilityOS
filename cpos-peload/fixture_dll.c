@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: MIT */
+static unsigned int relocation_marker;
+static unsigned int *const relocation_anchor __attribute__((used)) = &relocation_marker;
 __declspec(dllimport) unsigned int CposApiDirect(void);
 __declspec(dllimport) unsigned int CposDllAttachState(void);
 __declspec(dllimport) unsigned int CposApiForward(void);

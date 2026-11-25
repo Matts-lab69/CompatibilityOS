@@ -5,6 +5,7 @@ typedef unsigned long DWORD;
 
 __declspec(dllimport) unsigned int CposFixtureHostReady(unsigned int step);
 static volatile unsigned int dep_attached;
+static volatile unsigned int *const relocation_anchor __attribute__((used)) = &dep_attached;
 
 BOOL DllMain(HANDLE module, DWORD reason, void *reserved)
 {
