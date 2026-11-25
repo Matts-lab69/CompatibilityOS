@@ -34,7 +34,7 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 
 **HECHO VERIFICADO — historical scope:** the [experimental PE][closure-pe] and [kernel][closure-kernel] jobs passed at `6fa11f2`; the same workflow failed separately at the Wine COM probe. Those green jobs do not verify the expanded [Phase 2 closure checks](12-fase2.md#closure-checks-for-the-next-revision).
 
-**Pending integrated validation:** the dedicated Phase 2 workflow passed; the full Wine workflow and its downstream installer are separate evidence.
+**HECHO VERIFICADO — integrated validation:** [Wine CI 45679578932][phase2-full] passed all six jobs on attempt 1 at `56a2fcb`, including both experimental jobs, static checks, Wine build and Xvfb tests, and attestation. [Installer verification 45688683134][phase2-installer] consumed that exact run and passed attested installation, uninstall, restore, and application data retention. No module was loaded outside the disposable guest.
 
 **HECHO VERIFICADO — first expanded run:** [45677117063](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45677117063) at `42941e0` passed the v1–v3 layout checks and completed 10,000,000 non-executing parser fuzz iterations. The DLL fixture and functional QEMU tests failed. See the [Phase 2 follow-up](12-fase2.md#closure-checks-for-the-next-revision); the expanded scope remains open.
 
@@ -43,13 +43,15 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 ## CachyOS USB handoff
 
 1. On the USB session, record the kernel version and whether `/dev/ntsync` exists as a character device and can be opened by the current user. Do not load modules or change permissions. A reachable device alone does not prove that Wine selected it.
-2. Open [Wine run 45637774717][com-retry] and download `compatibilityos-linux-x86_64` (artifact `15036064671`, expires 2026-12-02 15:30 UTC). If it expired, use a fresh, successful and attested Wine CI run from `main`; do not use the staging artifact. The artifact contains the bundle and `SHA256SUMS`.
+2. Download the [attested `compatibilityos-linux-x86_64` artifact](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45679578932/artifacts/15057617303) (expires 2026-12-02 19:47 UTC). If it expired, use a fresh, successful and attested Wine CI run from `main`; do not use the staging artifact. The artifact contains the bundle and `SHA256SUMS`.
 3. Start with the repository installer's `--dry-run install RUN_ID` mode, which prints the destination paths without writing. If installing in the USB environment is desired, normal installation fetches the selected run and checks the manifest, bundle hash and signed attestations before registering the launcher. See [installer documentation](08-instalador.md).
 4. Record the exact run and commit, kernel, desktop session, launcher result, and the `cpos-sync:` marker in `${XDG_STATE_HOME:-$HOME/.local/state}/cpos/APP/wine.log`. Record absent logs or errors verbatim. Do not infer performance or crash-rate differences from this smoke check.
 
 **Pending decisions:** confirm active ntsync and actual COSMIC behavior on the USB; no host changes or release are part of this audit.
 
 [full]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757
+[phase2-full]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45679578932
+[phase2-installer]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45688683134
 [closure]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888
 [closure-static]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619297
 [closure-pe]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619274
