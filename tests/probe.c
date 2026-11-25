@@ -111,7 +111,7 @@ static int rpcss_com(void)
     DWORD needed, module_length, disposition;
     IUnknown *object = NULL;
     HRESULT hr;
-    WCHAR module[MAX_PATH], command[MAX_PATH + 32];
+    WCHAR module[MAX_PATH], command[MAX_PATH + 32], registered[MAX_PATH + 32];
     HKEY key = NULL, server_key = NULL;
     const WCHAR *clsid_path = L"Software\\Classes\\CLSID\\{6F25D812-9374-4C86-9122-B451D1AC7039}";
     int bad = 0, attempted = 0, initialized = 0;
@@ -148,6 +148,16 @@ static int rpcss_com(void)
     }
     if (server_key) RegCloseKey(server_key);
     if (key) RegCloseKey(key);
+    if (!bad) {
+        DWORD type = 0, bytes = sizeof(registered);
+        LONG rc = RegGetValueW(HKEY_LOCAL_MACHINE,
+            L"Software\\Classes\\CLSID\\{6F25D812-9374-4C86-9122-B451D1AC7039}\\LocalServer32",
+            NULL, RRF_RT_REG_SZ, &type, registered, &bytes);
+        if (rc || wcscmp(registered, command)) {
+            printf("COM registration readback failed: %ld\n", rc);
+            bad = 1;
+        } else wprintf(L"COM fixture LocalServer32: %ls\n", registered);
+    }
     if (!bad) {
         hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
         if (FAILED(hr)) { printf("CoInitializeEx failed: 0x%08lx\n", (unsigned long)hr); bad = 1; }
@@ -206,7 +216,7 @@ static ULONG STDMETHODCALLTYPE object_release(IUnknown *iface)
     if (!refs) HeapFree(GetProcessHeap(), 0, iface);
     return refs;
 }
-static const IUnknownVtbl object_vtbl = { object_query, object_addref, object_release };
+static IUnknownVtbl object_vtbl = { object_query, object_addref, object_release };
 static HRESULT STDMETHODCALLTYPE factory_query(IClassFactory *iface, REFIID iid, void **out)
 {
     if (!out) return E_POINTER;
@@ -233,7 +243,7 @@ static HRESULT STDMETHODCALLTYPE factory_create(IClassFactory *iface, IUnknown *
     return hr;
 }
 static HRESULT STDMETHODCALLTYPE factory_lock(IClassFactory *iface, BOOL lock) { (void)iface; (void)lock; return S_OK; }
-static const IClassFactoryVtbl factory_vtbl = { factory_query, factory_addref, factory_release, factory_create, factory_lock };
+static IClassFactoryVtbl factory_vtbl = { factory_query, factory_addref, factory_release, factory_create, factory_lock };
 static int com_server(void)
 {
     fixture_factory factory = {{&factory_vtbl}, 1};
