@@ -1,6 +1,10 @@
 <!-- SPDX-License-Identifier: MIT -->
 # Development status
 
+## Closure follow-up — 2026-11-25
+
+See the [criterion-by-criterion audit and CachyOS USB handoff](14-cierre.md). **HECHO VERIFICADO:** [run 45604182888](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139198575163) passed persistent font discovery in a fresh session (`ok persistent-font`), but the COM probe failed with `ShellWindows COM activation failed: 0x80040152`. The synthetic replacement in [run 45614430285](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45614430285/job/139227228315) failed with `Synthetic COM activation failed: 0x80040154`. **HIPÓTESIS:** the pinned Wine lookup uses machine classes; `3298d44` registers the fixture under HKLM of the disposable prefix. **SIN ANALIZAR:** the outcome of [run 45622130216](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45622130216).
+
 ## Recovery and local checks
 
 **HECHO VERIFICADO:** after the shutdown the checkout was clean, the stash was empty, and local `HEAD` and remote `main` agreed at `2fbbfd0`. The six active patches passed `git apply --check` in series order on a fresh external shallow checkout of `7298a818`; the checkout was removed. The optional fsync update fails on this pin; see [candidate notes](../patches/upstream-candidates/README.md). No local Wine or module build was run.
