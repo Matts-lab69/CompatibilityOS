@@ -35,6 +35,12 @@ The experimental `/dev/compat` device has bounded per-open handle tables and no 
 
 ## Follow-up implementation
 
+### Closure checks for the next revision
+
+- The PE execution job must build its own MinGW fixtures and check direct DLL imports, forwarded exports, delay imports, and DLL attach/detach order. Fuzzing must remain non-executable and complete at least 10,000,000 iterations independently of the execution fixtures.
+- The guest job must exercise independent opens, name and handle lifetime, mutex abandonment, semaphore bounds, and atomic waits without loading the module on the runner host. ABI v1 and v2 layout and behavior checks remain mandatory.
+- **SIN ANALIZAR:** neither historical job success below nor successful compilation alone verifies this expanded scope. Record the tested commit and the jobs that actually ran before marking it verified.
+
 - **HECHO VERIFICADO:** [run 45342439841](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45342439841) passed the MinGW fixture (one static TLS slot, a minimal TEB and PEB exposing the mapped ImageBase, a process-attach callback, and restoration of host GS), 10,000,000 parser fuzz iterations, and the guest ioctl and messaging jobs. The loader attempts the preferred base without replacing existing mappings, applies AMD64 DIR64 relocations, and resolves only allowlisted fixture imports. It is not a sandbox. General DLL loading and process/thread initialization remain absent.
 - **HECHO VERIFICADO:** The [final guest job](https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757/job/138563022465) passed ABI layout checks and functional tests for v1 tokens, v2 per-open objects, wait sets and restricted regular-file references. Cross-open descriptor sharing and ntsync integration are not implemented.
 - **HECHO VERIFICADO:** The synchronous queue dispatches on the owning thread and wakes queued senders on close. It uses pthreads by default; the optional v2 event signals the owner, while pthreads still protect queue state and replies. There is no cross-process dispatch, Windows message pumping or deadlock resolution for cyclic sends.

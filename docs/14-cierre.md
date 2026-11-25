@@ -32,6 +32,8 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 - **PARCIAL:** [QEMU job][kernel] passed per-open objects, wait sets and restricted file references; named objects and abandonment are not covered.
 - **HECHO VERIFICADO:** `083336c`, [QEMU job][kernel]: optional event-backed messaging and versioned ioctl smoke tests. This does not substitute for wineserver. See [Phase 2](12-fase2.md).
 
+**HECHO VERIFICADO — historical scope:** the [experimental PE][closure-pe] and [kernel][closure-kernel] jobs passed at `6fa11f2`; the same workflow failed separately at the Wine COM probe. Those green jobs do not verify the expanded [Phase 2 closure checks](12-fase2.md#closure-checks-for-the-next-revision).
+
 **SIN ANALIZAR:** active ntsync, real COSMIC, performance and crash rates. No baseline was run.
 
 ## CachyOS USB handoff
@@ -46,6 +48,8 @@ Evidence is revision-specific. The original [full run][full] passed at `083336c`
 [full]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45427394757
 [closure]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888
 [closure-static]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619297
+[closure-pe]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619274
+[closure-kernel]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139170619063
 [closure-test]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45604182888/job/139198575163
 [com-retry]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45637774717
 [latest-test]: https://github.com/Matts-lab69/CompatibilityOS/actions/runs/45637774717/job/139312761770
